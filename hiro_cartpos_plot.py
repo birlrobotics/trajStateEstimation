@@ -12,6 +12,7 @@ import os
 import numpy
 from numpy import pi, cos, sin, linspace, sign, sqrt
 
+import scipy
 import matplotlib
 import matplotlib.lines as mlines
 
