@@ -1,4 +1,5 @@
 from sympy.physics.vector import *
+import numpy
 import datadumper
 reload(datadumper)
 from datadumper import save_load
@@ -24,41 +25,42 @@ def extend_base(a_,show=False):
     return set(a)
 
 def remove_overlapping(a,show=False):
-    b = set()
+    b_ = set()
     for ni,i in enumerate(list(a)):
         if show:
             print "\r",ni,
-        b.add( i.to_matrix(N).evalf() )
+        b_.add( i.to_matrix(N).evalf() )
+    b = []
+    for i in b_:
+        b.append(numpy.array(i).astype(float))
     if show:
         print "\r            \r",
-    return b
+    b = numpy.array(b)
+    return b.reshape(b.shape[:2])
 
 
-def gen_base():
+def gen_base(iter=1):
     a = [set()]
     b = []
 
     for i in [N.x, N.y, N.z]:
         a[0].add(i)
         a[0].add(-i)
+    a[0].add((i-i).normalize())
+    print N.x*0
 
     print "0 | a:",len(a[0]),
     b.append(remove_overlapping(a[0]));print "  b:",len(b[0]);
 
-    a.append(extend_base(a[0]));print "1 | a:",len(a[1]),
-    b.append(remove_overlapping(a[1]));print "  b:",len(b[1]);
+    for i in xrange(iter):
+        a.append(extend_base(a[i],i>1));print str(i+1)+" | a:",len(a[i+1]),
+        b.append(remove_overlapping(a[i+1],i>1));print "  b:",len(b[i+1]);
 
-    a.append(extend_base(a[1]));print "2 | a:",len(a[2]),
-    b.append(remove_overlapping(a[2]));print "  b:",len(b[2]);
+    #return {'a':a,'b':b}
+    return b
 
-    a.append(extend_base(a[2],True));print "0 | a:",len(a[3]),
-    b.append(remove_overlapping(a[3],True));print "  b:",len(b[3]);
-
-    return {'a':a,'b':b}
 
 if __name__ == "__main__":
-    data = save_load("dcc_base.pydump",data=None,mode=None,datagen=gen_base)
-
-
-#a = extend_base(a)
-#print len(a)
+    # cPickle can't save sympy data
+    data = save_load("dcc_base.pydump",data=None,mode=None,datagen=gen_base,param={'iter':3})
+    print map(lambda x:x.shape[0],data)
