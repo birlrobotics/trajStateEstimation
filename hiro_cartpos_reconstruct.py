@@ -45,10 +45,16 @@ tasktype_tree = {
     'find -maxdepth 3 -name "CartPos*" |grep "\./FC0[^/]*/CartPos*"'
 '''
 
-root = '~/temp/apriltest/data'
+root = '~/temp/data'
 root = os.popen('echo '+root).read().strip() # get the absolute path
 
 def findfilenames(root):
+    '''
+@param root [string]: directory containing all datasets
+
+Get all filenames of CartPos*.dat & State*.dat (most are the same, some outliers exist)
+And return the dict-tree structure to store data.
+'''
     filename = tasktype_tree.fromkeys(tasktype_tree.keys())
     for i in filename:
         filename[i] = {}
@@ -75,17 +81,18 @@ def findfilenames(root):
 
 
 filenames_save = "filenames.txt"
-if False:
+try:
+    ftemp = open(filenames_save,"r")
+    data = cPickle.load(ftemp)
+    ftemp.close()
+    print "Filenames loaded"
+except:
     data= findfilenames(root)
     ftemp = open(filenames_save,"w")
     cPickle.dump(data,ftemp)
     ftemp.close()
     print "Filenames saved"
-else:
-    ftemp = open(filenames_save,"r")
-    data = cPickle.load(ftemp)
-    ftemp.close()
-    print "Filenames loaded"
+
 
 codedir = 'trajcode'
 alldatafile = "alldata.txt"
@@ -386,17 +393,20 @@ def savecodefile(data):
     return data
 
 def loadcodefile():
+    ret = cPickle.load(open(alldatafile,"r"))
     print "loading data from ./"+alldatafile
-    return cPickle.load(open(alldatafile,"r"))
+    return ret
 
 
 #if __name__ == "__main__":
 def main(data_name):
     assert(type(data_name) is str)
-    if False:
-        data = savecodefile(data)
-    else:
+    global data
+    try:
         data = loadcodefile()
+    except:
+        data = savecodefile(data)
+        
     
     data_name_map = {
        'A' : 'data_003_SIM_HIRO_SA_Success',
@@ -422,7 +432,7 @@ def main(data_name):
     print "================================="
     print "data selected :",data_name
 
-    cls_behavior = False
+    cls_behavior = True
 
     for i in data_list:
         for j in data[i]:
@@ -623,7 +633,7 @@ def main(data_name):
 
 
 if __name__ == "__main__":
-    #main("A")
+    main("A")
     main("B")
     main("C")
     main("AC")
