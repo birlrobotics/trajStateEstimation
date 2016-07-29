@@ -1,0 +1,6 @@
+{
+  "name": "trajStateEstimation",
+  "tagline": "This work uses AFF to segment 3D Cartesian trajectories, and then Direct-Curve-Coding to encode the segmentation into an action grammar, as well as performing similarity measures, classification, and visualization",
+  "body": "This code has been used for the following publications:\r\n\r\nJ. Rojas, Zhenjie Huang, and Kensuke Harada, Robot Contact Task State Estimation via Action Grammars, IEEE-RAS Humanoids, 2016 (in-review).\r\n\r\n",
+  "note": "Don't delete this file! It's used internally to help with page regeneration."
+}
