@@ -63,7 +63,7 @@ def normalize(v,axis=1): #vectors, shape=(n,3)
     v[nonzero] /= numpy.expand_dims(v_norm,2)[nonzero] 
 
 
-def basegenOne(t, n, b):
+def basegen19One(t, n, b):
     nb = -b
     nt = -t
     nn = -n
@@ -84,12 +84,27 @@ def basegenOne(t, n, b):
     return base[0]
 
 
+def basegenOneRot(t, n, b, it=1): # default for DCC19
+    assert len(t.shape) is 1
+    assert len(n.shape) is 1
+    assert len(b.shape) is 1
+    rot = numpy.array([t,n,b]).T
+    return numpy.dot(rot,dcc_base[it].T).T
+
+def basegenRot(t, n, b, it=1): # Only for quick-generation of FF
+    assert len(t.shape) is 2
+    assert len(n.shape) is 2
+    assert len(b.shape) is 2
+    base_ = numpy.transpose(numpy.array([t,n,b]),axes=(1,2,0))
+    base = numpy.transpose(numpy.dot(base_, dcc_base[it].T),axes=(0,2,1))
+
+
 # T == 0 : keep base
 # T != 0 :
 #     N == 0 : keep N
 #     N != 0 : nice
 # B = T x N
-def basegen(t, n, b):
+def basegen19(t, n, b):
     naxis = len(t.shape)
     nb = -b
     nt = -t
@@ -181,6 +196,8 @@ def getb(t): # t is the tangent vector
 
 
 
+
+
 # [ WARNING ] THIS IS Frenet Frame encoding, not Accumulated Frenet Frame
 # code.shape == r.shape[0] - 1
 def encode(r,t,base):
@@ -201,7 +218,7 @@ def FFencode(r):
     b = getb(t)
     n = numpy.cross(b,t)
     ## DCC19 base directions
-    base = basegen(t,n,b)
+    base = basegen19(t,n,b)
     ## DFF uses difference as tangent vector directly.
     code = encode(r,t,base)
     #return dict(zip("t,n,b,base,code".split(','),(t,n,b,base,code)))
@@ -211,11 +228,11 @@ def AFFencode(r):
     code = numpy.zeros((r.shape[0]-1,))
     t = gett(r)
 
-    b0 = numpy.cross(r[0],r[1])
+    b0 = numpy.cross(t[0],t[1])
     normalize(b0.reshape(1,3))
     n0 = numpy.cross(b0,t[0])
     normalize(n0.reshape(1,3))
-    base0 = basegenOne(t[0],n0,b0)
+    base0 = basegen19One(t[0],n0,b0)
 
     pi_d_2 = numpy.pi / 2.0
     norm = numpy.linalg.norm
@@ -236,12 +253,12 @@ def AFFencode(r):
             #normalize(b[i].reshape(1,3))
             #n[i] = numpy.cross(b[i],t[i])
             #normalize(n[i].reshape(1,3))
-            #base[i] = basegenOne(t[i],n[i],b[i])
+            #base[i] = basegen19One(t[i],n[i],b[i])
             b1 = numpy.cross(t[i-1],t[i])
             normalize(b1.reshape(1,3))
             n1 = numpy.cross(b1,t[i])
             normalize(n1.reshape(1,3))
-            base1 = basegenOne(t[i],n1,b1)
+            base1 = basegen19One(t[i],n1,b1)
             code[i-1] = numpy.argmax(numpy.dot(base0,t[i]))
             print i,
         else:
