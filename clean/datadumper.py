@@ -30,17 +30,17 @@ Save/load data.
         self._dataname = dataname if dataname else self._dataname_default
         if not mode:
             try:
-                data = save_load(filename,data,"load",datagen,param,dataname)
+                data = self.save_load(filename,data,"load",datagen,param,dataname)
             except Exception as e:
                 print e,e.message
-                data = save_load(filename,data,"save",datagen,param,dataname)
+                data = self.save_load(filename,data,"save",datagen,param,dataname)
         elif mode=="save":
             if data:
-                data = save_data(filename,data)
+                data = self.save_data(filename,data)
             elif datagen:
-                data = save_data(filename,datagen(**param))
+                data = self.save_data(filename,datagen(**param))
         elif mode=="load":
-            data = load_data(filename)
+            data = self.load_data(filename)
         return data
 
 

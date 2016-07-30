@@ -11,11 +11,14 @@ reload(load_data)
 from load_data import *
 print 'OK.\n'
 
+
+
 data_name_map = {
     'A' : 'data_003_SIM_HIRO_SA_Success',
     'B' : 'data_004_SIM_HIRO_SA_ErrorCharac_Prob',
     'C' : 'data_008_HIRO_SideApproach_SUCCESS',
 }
+
 
 
 def resample(r,npoint):
@@ -48,9 +51,19 @@ def resample(r,npoint):
 
 
 
-
-
-def main(data_name):
+def main(data_name, align="cut",FForAFF="FF",svmimpl="SVC_linear",subset=True):
+#def main(data_name, align="cut",subset=True):
+    '''
+@param data_name (str): ["A","B","C"] and any combination of them
+@param align (str): ["cut","resampling","dtw"(not implemented yet)]
+@param FForAFF (str): ["FF","AFF"], use FF or AFF
+@param svmimpl (str): ["SVC_linear", "SVC_RBF", "SVC_Polynomial", "LinearSVC"]
+      implementation of svm, 
+      more implementations should be added in the future.
+@param subset (bool): 
+      Whether to separate datasets into smaller subsets or not. 
+      True for separation.
+'''
     assert(type(data_name) is str)
     global data        
     global data_name_map  
@@ -64,12 +77,8 @@ def main(data_name):
     testX = []
     testY = []
     caterange_min = 0
-#    for i in [
-#            'data_008_HIRO_SideApproach_SUCCESS',
-#            'data_003_SIM_HIRO_SA_Success',
-#            'data_004_SIM_HIRO_SA_ErrorCharac_Prob',
-#    ]:#data:
-    #for i in data:
+
+
     print "================================="
     print "data selected :",data_name
 
@@ -272,6 +281,14 @@ def main(data_name):
                 print ",",
             print ""
 
+
+'''
+Design: 
+   - Save all of the results into a large variable called `result`,
+     and save it to a file.
+   - Use a specific function to output the result (online & offline).
+   - Use text file currently, but database in the future.
+'''
 
 if __name__ == "__main__":
     main("A")

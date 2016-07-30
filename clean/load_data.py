@@ -2,7 +2,7 @@ import os
 import numpy
 import vector_sympy
 reload(vector_sympy)
-from vector_sympy import save_load, dumper, dcc_base
+from vector_sympy import dumper, dcc_base
 
 
 
@@ -62,6 +62,26 @@ def normalize(v,axis=1): #vectors, shape=(n,3)
     nonzero = v_norm != 0 # zero may exists
     v[nonzero] /= numpy.expand_dims(v_norm,2)[nonzero] 
 
+
+def basegenOne(t, n, b):
+    nb = -b
+    nt = -t
+    nn = -n
+    # DCC19 base directions
+    base = numpy.transpose(
+        numpy.dstack([
+            numpy.zeros(t.shape),
+            t,n,b,nb,nn,nt,
+            n +t, n +nt, nn+t, nn+nt,
+            b +t, b +nt, b +n, b +nn,
+            nb+t, nb+nt, nb+n, nb+nn
+        ]),
+        axes=(0,2,1))
+    #print base
+    #b_s = base
+    #return base
+    normalize(base,axis=2)
+    return base[0]
 
 
 # T == 0 : keep base
@@ -176,16 +196,61 @@ def encode(r,t,base):
     return dbase.argmax(axis=1)
 
 
-
-def process(r):
+def FFencode(r):
     t = gett(r)
     b = getb(t)
     n = numpy.cross(b,t)
-    #DCC19 base directions
+    ## DCC19 base directions
     base = basegen(t,n,b)
-    #DFF uses difference as tangent vector directly.
+    ## DFF uses difference as tangent vector directly.
     code = encode(r,t,base)
-    return dict(zip("t,n,b,base,code".split(','),(t,n,b,base,code)))
+    #return dict(zip("t,n,b,base,code".split(','),(t,n,b,base,code)))
+    return code
+
+def AFFencode(r):
+    code = numpy.zeros((r.shape[0]-1,))
+    t = gett(r)
+
+    b0 = numpy.cross(r[0],r[1])
+    normalize(b0.reshape(1,3))
+    n0 = numpy.cross(b0,t[0])
+    normalize(n0.reshape(1,3))
+    base0 = basegenOne(t[0],n0,b0)
+
+    pi_d_2 = numpy.pi / 2.0
+    norm = numpy.linalg.norm
+    
+    npoint = r.shape[0]
+    for i in xrange(1,npoint):
+        n_i_1 = norm(base0[1])
+        n_i = norm(t[i])
+        if(not (n_i_1 and n_i)):
+            angle = 0
+        else:
+            cos_ = numpy.dot(base0[1],t[i])/(n_i_1*n_i)
+            if(numpy.abs(cos_)>=1):
+                cos_ = 1 if cos_>0 else -1
+            angle = numpy.arccos(cos_)
+        if(angle > pi_d_2):
+            #b[i] = numpy.cross(r[i-1],r[i])
+            #normalize(b[i].reshape(1,3))
+            #n[i] = numpy.cross(b[i],t[i])
+            #normalize(n[i].reshape(1,3))
+            #base[i] = basegenOne(t[i],n[i],b[i])
+            b1 = numpy.cross(t[i-1],t[i])
+            normalize(b1.reshape(1,3))
+            n1 = numpy.cross(b1,t[i])
+            normalize(n1.reshape(1,3))
+            base1 = basegenOne(t[i],n1,b1)
+            code[i-1] = numpy.argmax(numpy.dot(base0,t[i]))
+            print i,
+        else:
+            base1 = base0
+            code[i-1] = 1
+
+        base1,base0 = base0,base1
+    print ""
+    return code
 
 
 
@@ -218,55 +283,110 @@ def correctR(r):
 
 
 #def savecodefile(data):
-def gencodedata(data, codedir=''):
+def gencodedata(data, process=[]):
+    process_keys = set(['func','param','final-info'])
+    assert isinstance(process,list)
+    assert all(map(lambda x:isinstance(x,dict),process))
+    assert all(map(lambda x:process_keys.issuperset(set(x.keys())),process))
+    assert all(map(lambda x:callable(x['func']),process))
+    assert all(map(lambda x:isinstance(x['param'],dict) if x.has_key('param') else True,process))
+    assert all(map(lambda x:isinstance(x['final-info'],str) if x.has_key('final-info') else True,process))
+
     #falldata = open(alldatafile,"w")
-    if(codedir):
-        os.system('mkdir '+codedir)
     for i in data:
-        if codedir:
-            os.system('mkdir '+codedir+'/'+i)
         for j in data[i]:
-            if codedir:
-                os.system('mkdir '+codedir+'/'+i+'/'+j)
             for k in data[i][j]:
-                if codedir:
-                    f = open(codedir+'/'+i+'/'+j+'/'+k.replace('/','__'),'w')
-                timestamp = map(float,open('/'.join([root,i,k,data[i][j][k]['State']]),"r").read().strip().split())
-                alldata =reader('/'.join([root,i,k,data[i][j][k]['CartPos']]))
+                dataijk = data[i][j][k]
+                fullpath = '/'.join([root,i,k,''])
+
+                timestamp = map(float,open(fullpath+dataijk['State'],"r").read().strip().split())
+                alldata =reader(fullpath+dataijk['CartPos'])
+
                 r = alldata[:,1:4]
+
                 correctR(r)
+
                 timestamp_i = map(lambda x:alldata[:,0].searchsorted(x),timestamp)
-                data[i][j][k]['state_stamp'] = timestamp_i
-                data[i][j][k]['r'] = r
+                dataijk['state_stamp'] = timestamp_i
+                dataijk['r'] = r
                 print i,j,k
-                proccode = process(r)['code']
-                data[i][j][k]['code'] = proccode
-                data[i][j][k]['length'] = r.shape[0]
+                dataijk['length'] = r.shape[0]
+
 
                 splitr = []
-                splitc = []
                 timestamp_i.append(r.shape[0])
                 for tsi in xrange(1,len(timestamp_i)):
                     splitr.append(r[timestamp_i[tsi-1]:timestamp_i[tsi]])
-                    splitc.append(proccode[timestamp_i[tsi-1]:timestamp_i[tsi]])
 
-                data[i][j][k]['r_split'] = splitr
-                data[i][j][k]['code_split'] = splitc
-
-                tcode = ','.join([str(k) for k in proccode])
-
-                if codedir:
-                    f.write(tcode)
-                    f.close()
+                dataijk['r_split'] = splitr
+                    
+                datapack = [data,i,j,k,dataijk,fullpath,alldata,timestamp]
+                for p in process:
+                    pparam_ = p['param'] if p.has_key('param') else {}
+                    p['func'](datapack, **pparam_)
     #cPickle.dump(data,falldata)
     #falldata.close()
-
-    if codedir:
-        print "code saved to ./"+codedir+". This is for intuitive analysis."
+    for p in process:
+        if p.has_key('final-info'):
+            print p['final-info']
 
     #print "all data saved to ./"+alldatafile+". data will be loaded from this file."
     return data
 
+
+filename_cartpose_corrected = 'CartPosCorrected.dat'
+def poscorrectedsave(datapack):
+    data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
+    global filename_cartpose_corrected
+    r = dataijk['r']
+    alldata[:,1:4] = r
+    fCartPosCorrected = file(fullpath+filename_cartpose_corrected,'w')
+    for dataline in alldata:
+        fCartPosCorrected.write('\t'.join([str(a) for a in dataline])+'\n')
+    fCartPosCorrected.close()
+    
+
+def codesave(datapack,codedir='./codedir'):
+    data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
+    for code_name in ['FF_code','AFF_code']:
+        try:
+            proccode = dataijk[code_name]
+            tcode = ','.join([str(pc) for pc in proccode])
+        except Exception as e:
+            print e.message
+            continue
+        codedir_fullpath = '/'.join([codedir,i,j,''])
+        codefilepath = codedir_fullpath+k.replace('/','__')+code_name+'.code'
+        try:
+            f = open(codefilepath,'w')
+        except:
+            os.system('mkdir -p '+codedir_fullpath)
+            f = open(codefilepath,'w')
+        f.write(tcode)
+        f.close()
+
+
+def save_code_FF(datapack):
+    data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
+    r = dataijk['r']
+    proccode = FFencode(r)
+    dataijk['FF_code'] = proccode
+    splitc = []
+    timestamp_i = dataijk['state_stamp']
+    for tsi in xrange(1,len(timestamp_i)):
+        splitc.append(proccode[timestamp_i[tsi-1]:timestamp_i[tsi]])
+    dataijk['FF_code_split'] = splitc
+
+def save_code_AFF(datapack):
+    data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
+    r = dataijk['r']
+    proccode = AFFencode(r)
+    dataijk['AFF_code'] = proccode
+    splitc = []
+    timestamp_i = dataijk['state_stamp']
+    for tsi in xrange(1,len(timestamp_i)):
+        splitc.append(proccode[timestamp_i[tsi-1]:timestamp_i[tsi]])
+    dataijk['AFF_code_split'] = splitc
 
 
 
@@ -300,6 +420,16 @@ data = dumper.save_load(
     data=None,
     mode=None,
     datagen=gencodedata,
-    param={'data':filenames, 'codedir': codedir},
+    param={
+        'data':filenames, 
+        'process':[
+            {'func': poscorrectedsave },
+            {'func': save_code_AFF },
+            {'func': save_code_FF },
+            {'func': codesave, 
+             'param':{'codedir':codedir}, 
+             'final-info':"code saved to ./"+codedir+". This is for intuitive analysis." },
+        ]
+    },
     dataname="Trajectory data",
 )
