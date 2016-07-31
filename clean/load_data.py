@@ -98,6 +98,28 @@ def basegenRot(t, n, b, it=1): # Only for quick-generation of FF
     base_ = numpy.transpose(numpy.array([t,n,b]),axes=(1,2,0))
     base = numpy.transpose(numpy.dot(base_, dcc_base[it].T),axes=(0,2,1))
 
+    naxis = len(t.shape)
+    tz = numpy.linalg.norm(t,axis=naxis-1) == 0
+    #nz = numpy.linalg.norm(n,axis=naxis-1) == 0
+    #bz = numpy.linalg.norm(b,axis=naxis-1) == 0
+    iszero = tz #+nz+bz #(tz | nz | bz)
+    
+    c = t.shape[0]
+    i = 0
+    while i < c:
+        if not iszero[i]:
+            for j in xrange(i-1,-1,-1):
+                base[j] = base[i]
+            break
+        i += 1
+
+    while i < c:
+        if iszero[i]:
+            base[i] = base[i-1]
+        i += 1
+        
+    return base
+
 
 # T == 0 : keep base
 # T != 0 :
@@ -202,7 +224,7 @@ def getb(t): # t is the tangent vector
 # code.shape == r.shape[0] - 1
 def encode(r,t,base):
     assert t.shape[0] == base.shape[0]
-    t_ = numpy.transpose(numpy.tile(t,(19,1,1)),axes=(1,0,2))
+    t_ = numpy.transpose(numpy.tile(t,(base.shape[1],1,1)),axes=(1,0,2))
     c = base.shape[0]
     nbase = base.shape[1]
     dbase = numpy.zeros((c-1,nbase))
@@ -213,18 +235,19 @@ def encode(r,t,base):
     return dbase.argmax(axis=1)
 
 
-def FFencode(r):
+def FFencode(r,it=1):
     t = gett(r)
     b = getb(t)
     n = numpy.cross(b,t)
     ## DCC19 base directions
-    base = basegen19(t,n,b)
+    #base = basegen19(t,n,b)
+    base = basegenRot(t,n,b,it)
     ## DFF uses difference as tangent vector directly.
     code = encode(r,t,base)
     #return dict(zip("t,n,b,base,code".split(','),(t,n,b,base,code)))
     return code
 
-def AFFencode(r):
+def AFFencode(r,it=1):
     code = numpy.zeros((r.shape[0]-1,))
     t = gett(r)
 
@@ -232,7 +255,7 @@ def AFFencode(r):
     normalize(b0.reshape(1,3))
     n0 = numpy.cross(b0,t[0])
     normalize(n0.reshape(1,3))
-    base0 = basegen19One(t[0],n0,b0)
+    base0 = basegenOneRot(t[0],n0,b0,it)
 
     pi_d_2 = numpy.pi / 2.0
     norm = numpy.linalg.norm
@@ -267,7 +290,7 @@ def AFFencode(r):
 
         base1,base0 = base0,base1
     print ""
-    return code
+    return code.astype(int)
 
 
 
@@ -314,7 +337,7 @@ def gencodedata(data, process=[]):
         for j in data[i]:
             for k in data[i][j]:
                 dataijk = data[i][j][k]
-                fullpath = '/'.join([root,i,k,''])
+                fullpath = '/'.join([root,i,k])
 
                 timestamp = map(float,open(fullpath+dataijk['State'],"r").read().strip().split())
                 alldata =reader(fullpath+dataijk['CartPos'])
@@ -383,22 +406,24 @@ def codesave(datapack,codedir='./codedir'):
         f.close()
 
 
-def save_code_FF(datapack):
+def save_code_FF(datapack,it):
     data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
     r = dataijk['r']
-    proccode = FFencode(r)
-    dataijk['FF_code'] = proccode
+    proccode = FFencode(r,it)
+    DCC_BASE_NUM = dcc_base[it].shape[0]    
+    dataijk['FF_code_'+str(DCC_BASE_NUM)] = proccode
     splitc = []
     timestamp_i = dataijk['state_stamp']
     for tsi in xrange(1,len(timestamp_i)):
         splitc.append(proccode[timestamp_i[tsi-1]:timestamp_i[tsi]])
     dataijk['FF_code_split'] = splitc
 
-def save_code_AFF(datapack):
+def save_code_AFF(datapack,it):
     data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
     r = dataijk['r']
-    proccode = AFFencode(r)
-    dataijk['AFF_code'] = proccode
+    proccode = AFFencode(r,it)
+    DCC_BASE_NUM = dcc_base[it].shape[0]    
+    dataijk['AFF_code_'+str(DCC_BASE_NUM)] = proccode
     splitc = []
     timestamp_i = dataijk['state_stamp']
     for tsi in xrange(1,len(timestamp_i)):
@@ -431,7 +456,6 @@ filenames = dumper.save_load(
     dataname="Filenames",
 )
 
-
 data = dumper.save_load(
     alldatafile,
     data=None,
@@ -441,8 +465,14 @@ data = dumper.save_load(
         'data':filenames, 
         'process':[
             {'func': poscorrectedsave },
-            {'func': save_code_AFF },
-            {'func': save_code_FF },
+            {'func': save_code_AFF,
+             'param' : {'it':1}},
+            {'func': save_code_FF,
+             'param' : {'it':1}},
+            {'func': save_code_AFF,
+             'param' : {'it':2}},
+            {'func': save_code_FF,
+             'param' : {'it':2}},
             {'func': codesave, 
              'param':{'codedir':codedir}, 
              'final-info':"code saved to ./"+codedir+". This is for intuitive analysis." },
@@ -450,3 +480,17 @@ data = dumper.save_load(
     },
     dataname="Trajectory data",
 )
+
+
+
+def sampleviewone():
+    global data
+    a = data
+    a = a[a.keys()[0]]
+    a = a[a.keys()[0]]
+    a = a[a.keys()[15]]
+    print "FF code\n",a['FF_code_91'],"\n"
+    print "AFF code\n",a['AFF_code_91'],"\n"
+    return a
+
+sample91a = sampleviewone()

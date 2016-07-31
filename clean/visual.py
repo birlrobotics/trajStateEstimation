@@ -1,19 +1,43 @@
+import os
+
+import numpy
+from numpy import pi, cos, sin, linspace, sign, sqrt
+
+import scipy
+import matplotlib
+import matplotlib.lines as mlines
+
+from matplotlib import pyplot as plt
+matplotlib.interactive(True)
+
+from mpl_toolkits.mplot3d import Axes3D
+
+from copy import deepcopy
+
+import load_data
+reload(load_data)
+from load_data import data, dcc_base
+
 #   hiro_cartpos_process_all_traj.py (show trajs)
 # - hiro_cartpos_code_visualize.py (colormaps)
 # - hiro_cartpos_git_updater.py (frames on path)
 
-
 #hiro_cartpos_code_visualize.py
-def codeshow(sa,sb):
-    s = code[sa][sb]
+def codeshow(data,ka,kb,type_,it):
+    s = data[ka][kb]
     ss = []
     minlen = numpy.inf
+
+    DCC_BASE_NUM = dcc_base[it].shape[0]    
+    typename_ = type_+'_'+str(DCC_BASE_NUM)
     for i in s:
-        ss.append(deepcopy(s[i]))
-        if len(s[i])<minlen:
-            minlen = len(s[i])
+        codestr = s[i][typename_]
+        ss.append(deepcopy(codestr))
+        if len(codestr)<minlen:
+            minlen = len(codestr)
         #plt.plot(s[i],'o-')
-    
+
+    print minlen,ka,kb
     for i in xrange(len(ss)):
         ss[i] = ss[i][:minlen]
 
@@ -23,8 +47,13 @@ def codeshow(sa,sb):
     ax = fig.add_subplot(111)
 
     cax = ax.imshow(nss, interpolation='none', extent=[0,minlen,0,len(ss)], aspect='auto', cmap='afmhot')
-    ax.set_title(sa+' ['+sb+']')
-    fig.savefig('/home/horisun/'+sa+'['+sb+'].png')
+
+    typename_ = typename_.replace(type_,type_.split('_')[0])
+    
+    ax.set_title(ka+' ['+kb+']_'+typename_)
+    os.system('mkdir -p codemap')
+    fig.savefig('./codemap/'+ka+'['+kb+']_'+typename_+'.png')
+    return fig
 
 
 
@@ -64,3 +93,30 @@ def drawframes(r,frames,ax):
                 tnb[j][i][1],
                 tnb[j][i][2],
                 color=color[j])
+
+
+def showit():
+    figs_ff = []
+    figs_aff = []
+    for i in data:
+        for j in data[i]:
+            figs_ff.append(codeshow(data,i,j,'FF_code',1))
+            figs_aff.append(codeshow(data,i,j,'AFF_code',1))
+            figs_ff.append(codeshow(data,i,j,'FF_code',2))
+            figs_aff.append(codeshow(data,i,j,'AFF_code',2))
+
+    #plt.show()
+    return figs_ff,figs_aff
+
+figs_ff,figs_aff = showit()
+
+#close all figure windows, disable it to view instantly
+def cleanfigs():
+    global figs_ff
+    global figs_aff
+    for i in figs_ff:
+        plt.close(i)
+    for i in figs_aff:
+        plt.close(i)
+
+cleanfigs()
