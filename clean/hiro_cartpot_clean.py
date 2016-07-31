@@ -51,19 +51,32 @@ def resample(r,npoint):
 
 
 
-def main(data_name, align="cut",FForAFF="FF",svmimpl="SVC_linear",subset=True):
+def main(data_name, align="cut",encode="FF",level="task",subset=True):
 #def main(data_name, align="cut",subset=True):
     '''
 @param data_name (str): ["A","B","C"] and any combination of them
-@param align (str): ["cut","resampling","dtw"(not implemented yet)]
-@param FForAFF (str): ["FF","AFF"], use FF or AFF
-@param svmimpl (str): ["SVC_linear", "SVC_RBF", "SVC_Polynomial", "LinearSVC"]
-      implementation of svm, 
-      more implementations should be added in the future.
+@param align (str): ["cut","interp","dtw"(not implemented yet)]
+@param encode (str): ["FF","AFF"], use FF or AFF
+@param level (str): ["task", "behavior"]
 @param subset (bool): 
       Whether to separate datasets into smaller subsets or not. 
       True for separation.
+##@param svmimpl (str): ["SVC_linear", "SVC_RBF", "SVC_Polynomial", "LinearSVC"]
+##      implementation of svm, 
+##      more implementations should be added in the future.
 '''
+
+    clfname = "svc, lin_svc, rbf_svc, poly_svc".split(', ')
+
+    test_result = {
+        "align" : align,
+        "encode" : encode,
+        "level" : level,
+        "subset" : subset,
+        "dataset" : data_name,
+        "accuracy" : dict.fromkeys(clfname), # result table
+    }
+    
     assert(type(data_name) is str)
     global data        
     global data_name_map  
@@ -130,7 +143,7 @@ def main(data_name, align="cut",FForAFF="FF",svmimpl="SVC_linear",subset=True):
     Y_ = numpy.array(testY)
     totalnum = Y_.shape[0]
 
-    clfname = "svc, lin_svc, rbf_svc, poly_svc".split(',')
+    
 
     for i in clfname:
         print i,

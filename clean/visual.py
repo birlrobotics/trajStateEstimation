@@ -53,7 +53,7 @@ def codeshow(data,ka,kb,type_,it):
     ax.set_title(ka+' ['+kb+']_'+typename_)
     os.system('mkdir -p codemap')
     fig.savefig('./codemap/'+ka+'['+kb+']_'+typename_+'.png')
-    return fig
+    plt.close(fig)
 
 
 
@@ -96,27 +96,13 @@ def drawframes(r,frames,ax):
 
 
 def showit():
-    figs_ff = []
-    figs_aff = []
     for i in data:
         for j in data[i]:
-            figs_ff.append(codeshow(data,i,j,'FF_code',1))
-            figs_aff.append(codeshow(data,i,j,'AFF_code',1))
-            figs_ff.append(codeshow(data,i,j,'FF_code',2))
-            figs_aff.append(codeshow(data,i,j,'AFF_code',2))
+            codeshow(data,i,j,'FF_code',1)
+            codeshow(data,i,j,'AFF_code',1)
+            codeshow(data,i,j,'FF_code',2)
+            codeshow(data,i,j,'AFF_code',2)
 
     #plt.show()
-    return figs_ff,figs_aff
 
-figs_ff,figs_aff = showit()
-
-#close all figure windows, disable it to view instantly
-def cleanfigs():
-    global figs_ff
-    global figs_aff
-    for i in figs_ff:
-        plt.close(i)
-    for i in figs_aff:
-        plt.close(i)
-
-cleanfigs()
+showit()

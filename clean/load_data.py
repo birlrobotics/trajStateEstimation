@@ -247,31 +247,38 @@ def FFencode(r,it=1):
     #return dict(zip("t,n,b,base,code".split(','),(t,n,b,base,code)))
     return code
 
+
 def AFFencode(r,it=1):
+    norm = numpy.linalg.norm
     code = numpy.zeros((r.shape[0]-1,))
     t = gett(r)
 
-    b0 = numpy.cross(t[0],t[1])
+    b0 = numpy.cross(r[0],r[1])
     normalize(b0.reshape(1,3))
     n0 = numpy.cross(b0,t[0])
     normalize(n0.reshape(1,3))
-    base0 = basegenOneRot(t[0],n0,b0,it)
+    #base0 = basegenOneRot(t[0],n0,b0,it)
+    base0 = basegen19One(t[0],n0,b0)
+    assert norm(t[0])
 
     pi_d_2 = numpy.pi / 2.0
-    norm = numpy.linalg.norm
     
     npoint = r.shape[0]
+    bound = numpy.pi/numpy.power(2,it+2)
     for i in xrange(1,npoint):
         n_i_1 = norm(base0[1])
         n_i = norm(t[i])
         if(not (n_i_1 and n_i)):
             angle = 0
+            print n_i_1, n_i,"="
         else:
             cos_ = numpy.dot(base0[1],t[i])/(n_i_1*n_i)
             if(numpy.abs(cos_)>=1):
                 cos_ = 1 if cos_>0 else -1
             angle = numpy.arccos(cos_)
-        if(angle > pi_d_2):
+            assert angle > 0
+            print angle,bound,angle>bound
+        if(angle > bound):
             #b[i] = numpy.cross(r[i-1],r[i])
             #normalize(b[i].reshape(1,3))
             #n[i] = numpy.cross(b[i],t[i])
@@ -281,9 +288,9 @@ def AFFencode(r,it=1):
             normalize(b1.reshape(1,3))
             n1 = numpy.cross(b1,t[i])
             normalize(n1.reshape(1,3))
-            base1 = basegen19One(t[i],n1,b1)
+            base1 = basegenOneRot(t[i],n1,b1)
             code[i-1] = numpy.argmax(numpy.dot(base0,t[i]))
-            print i,
+            #print i,
         else:
             base1 = base0
             code[i-1] = 1
@@ -386,14 +393,14 @@ def poscorrectedsave(datapack):
     fCartPosCorrected.close()
     
 
-def codesave(datapack,codedir='./codedir'):
+def codesave(datapack,codedir='./codedir',codetype=[]):
     data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
-    for code_name in ['FF_code','AFF_code']:
+    for code_name in codetype:
         try:
             proccode = dataijk[code_name]
             tcode = ','.join([str(pc) for pc in proccode])
         except Exception as e:
-            print e.message
+            print "Exception in codesave(): ",type(e), e.message
             continue
         codedir_fullpath = '/'.join([codedir,i,j,''])
         codefilepath = codedir_fullpath+k.replace('/','__')+code_name+'.code'
@@ -442,7 +449,7 @@ codedir = 'trajcode'
 alldatafile = "alldata.pydump"
 
 tasktype_tree = {
-    'data_003_SIM_HIRO_SA_Success': ['2012'],
+    'data_003_SIM_HIRO_SA_Success': ['2012','2016'],
     'data_004_SIM_HIRO_SA_ErrorCharac_Prob': ['FC','exp'],
     'data_008_HIRO_SideApproach_SUCCESS':['2012','x']
 }
@@ -474,7 +481,14 @@ data = dumper.save_load(
             {'func': save_code_FF,
              'param' : {'it':2}},
             {'func': codesave, 
-             'param':{'codedir':codedir}, 
+             'param':{
+                 'codedir':codedir,
+                 'codetype':[
+                     'FF_code_19',
+                     'FF_code_91',
+                     'AFF_code_19',
+                     'AFF_code_91',
+                 ]}, 
              'final-info':"code saved to ./"+codedir+". This is for intuitive analysis." },
         ]
     },
@@ -493,4 +507,4 @@ def sampleviewone():
     print "AFF code\n",a['AFF_code_91'],"\n"
     return a
 
-sample91a = sampleviewone()
+#sample91a = sampleviewone()
