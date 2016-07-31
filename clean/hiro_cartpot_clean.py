@@ -304,11 +304,35 @@ Design:
 '''
 
 if __name__ == "__main__":
-    main("A")
-    main("B")
-    main("C")
-    main("AC")
-    main("BC")
-    main("ABC")
+    '''
+@param data_name (str): ["A","B","C"] and any combination of them
+@param align (str): ["cut","interp","dtw"(not implemented yet)]
+@param encode (str): ["FF","AFF"], use FF or AFF
+@param level (str): ["task", "behavior"]
+@param subset (bool): 
+      Whether to separate datasets into smaller subsets or not. 
+      True for separation.
+##@param svmimpl (str): ["SVC_linear", "SVC_RBF", "SVC_Polynomial", "LinearSVC"]
+##      implementation of svm, 
+##      more implementations should be added in the future.
+'''
+
+    for align in ['cut','interp']:
+        for encode in ['FF','AFF']:
+            for level in ['task','behavior']:
+                #for subset in [True, False]:
+                main_ = lambda x: main(
+                    x,
+                    align=align,
+                    encode=encode,
+                    level=level,
+                    subset=True
+                )
+                main_("A")
+                main_("B")
+                main_("C")
+                main_("AC")
+                main_("BC")
+                main_("ABC")
 
 

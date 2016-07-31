@@ -183,6 +183,33 @@ def gett(r): # r is the curve, r.shape = (n,3)
     normalize(t)
     return t
 
+# cover all zeros with nearby values
+# | 0 |=====| 0 |=====| 0 |=====| 0 |
+# |<--|=====|-->|=====|-->|=====|-->|
+def cover_zeros(a_):
+    assert len(a_.shape) is 2
+    assert a_.shape[1] is 3
+
+    a = a_.copy()
+
+    norm = lambda x:numpy.linalg.norm(x,axis=1)
+    z = (norm(a)==0)
+    c = a.shape[0]
+    i = 0
+    while i<c:
+        if not z[i]:
+            for j in xrange(i-1,-1,-1):
+                a[j] = a[j+1]
+            break
+        i += 1
+
+    while i<c:
+        if z[i]:
+            a[i] = a[i-1]
+        i += 1
+
+    return a
+
 
 # Discrete fenet frame B (binormal vector)
 def getb(t): # t is the tangent vector
@@ -195,25 +222,8 @@ def getb(t): # t is the tangent vector
     b[0] = b[1]
     
     normalize(b)
-
-    norm = lambda x:numpy.linalg.norm(x,axis=1)
-    keepn = (norm(b)==0)#*(norm(t)!=0) # straight line
-
-    c = t.shape[0]
-    i = 0
-    while i < c:
-        if not keepn[i]:
-            for j in xrange(i-1,-1,-1):
-                b[j] = b[j+1]
-            break
-        i += 1
-
-    while i < c:
-        if keepn[i]:
-            b[i] = b[i-1]
-        i += 1
     
-    b[norm(t)==0] = numpy.zeros((3,))
+    #b[norm(t)==0] = numpy.zeros((3,))
     return b
 
 
@@ -236,8 +246,10 @@ def encode(r,t,base):
 
 
 def FFencode(r,it=1):
-    t = gett(r)
+    orit = gett(r)
+    t = cover_zeros(orit)
     b = getb(t)
+    b = cover_zeros(b)
     n = numpy.cross(b,t)
     ## DCC19 base directions
     #base = basegen19(t,n,b)
@@ -251,24 +263,34 @@ def FFencode(r,it=1):
 def AFFencode(r,it=1):
     norm = numpy.linalg.norm
     code = numpy.zeros((r.shape[0]-1,))
-    t = gett(r)
+    orit = gett(r)
+    t = cover_zeros(orit)
+    b = getb(t)
+    b = cover_zeros(b)
+    n = numpy.cross(b,t)
+    base_ff = basegenRot(t,n,b,it)
 
-    b0 = numpy.cross(r[0],r[1])
-    normalize(b0.reshape(1,3))
-    n0 = numpy.cross(b0,t[0])
-    normalize(n0.reshape(1,3))
-    #base0 = basegenOneRot(t[0],n0,b0,it)
-    base0 = basegen19One(t[0],n0,b0)
+    #b0 = numpy.cross(r[0],r[1])
+    #normalize(b0.reshape(1,3))
+    #n0 = numpy.cross(b0,t[0])
+    #normalize(n0.reshape(1,3))
+    #base0 = basegen19One(t[0],n0,b0)
+    ##base0 = basegenOneRot(t[0],n0,b0,it)
+
+    #base0 = basegen19One(t[0],n0,b0)
+    #base0 = basegenOneRot(t[0],n[0],b[0],it) #should not be zero
+    base0 = base_ff[0]
     assert norm(t[0])
 
-    pi_d_2 = numpy.pi / 2.0
+    #pi_d_2 = numpy.pi / 2.0
     
     npoint = r.shape[0]
-    bound = numpy.pi/numpy.power(2,it+2)
+    bound = numpy.pi/numpy.power(2,it+1)
     for i in xrange(1,npoint):
         n_i_1 = norm(base0[1])
         n_i = norm(t[i])
-        if(not (n_i_1 and n_i)):
+        if (not (n_i_1 and n_i)):
+        #if False:
             angle = 0
             print n_i_1, n_i,"="
         else:
@@ -276,24 +298,28 @@ def AFFencode(r,it=1):
             if(numpy.abs(cos_)>=1):
                 cos_ = 1 if cos_>0 else -1
             angle = numpy.arccos(cos_)
-            assert angle > 0
-            print angle,bound,angle>bound
+            assert angle >= 0
+            #print angle,bound,angle>bound
+
         if(angle > bound):
             #b[i] = numpy.cross(r[i-1],r[i])
             #normalize(b[i].reshape(1,3))
             #n[i] = numpy.cross(b[i],t[i])
             #normalize(n[i].reshape(1,3))
             #base[i] = basegen19One(t[i],n[i],b[i])
-            b1 = numpy.cross(t[i-1],t[i])
-            normalize(b1.reshape(1,3))
-            n1 = numpy.cross(b1,t[i])
-            normalize(n1.reshape(1,3))
-            base1 = basegenOneRot(t[i],n1,b1)
+
+            #b1 = numpy.cross(t[i-1],t[i])
+            #normalize(b1.reshape(1,3))
+            #n1 = numpy.cross(b1,t[i])
+            #normalize(n1.reshape(1,3))
+            #base1 = basegenOneRot(t[i],n1,b1)
+            base1 = base_ff[i]
             code[i-1] = numpy.argmax(numpy.dot(base0,t[i]))
             #print i,
         else:
             base1 = base0
             code[i-1] = 1
+            #print "="*10
 
         base1,base0 = base0,base1
     print ""
@@ -473,6 +499,10 @@ data = dumper.save_load(
         'process':[
             {'func': poscorrectedsave },
             {'func': save_code_AFF,
+             'param' : {'it':0}},
+            {'func': save_code_FF,
+             'param' : {'it':0}},
+            {'func': save_code_AFF,
              'param' : {'it':1}},
             {'func': save_code_FF,
              'param' : {'it':1}},
@@ -484,8 +514,10 @@ data = dumper.save_load(
              'param':{
                  'codedir':codedir,
                  'codetype':[
+                     'FF_code_7',
                      'FF_code_19',
                      'FF_code_91',
+                     'AFF_code_7',
                      'AFF_code_19',
                      'AFF_code_91',
                  ]}, 

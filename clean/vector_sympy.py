@@ -40,6 +40,14 @@ def remove_overlapping(a,show=False):
     return b.reshape(b.shape[:2])
 
 
+def base_sort_cmp(x,y):
+    for i in xrange(3):
+        if x[i]>y[i]:
+            return -1
+        elif x[i]<y[i]:
+            return 1
+    return 0
+
 def gen_base(iter=1):
     a = [set()]
     b = []
@@ -55,9 +63,12 @@ def gen_base(iter=1):
 
     for i in xrange(iter):
         a.append(extend_base(a[i],i>1));print str(i+1)+" | a:",len(a[i+1]),
-        b.append(remove_overlapping(a[i+1],i>1));print "  b:",len(b[i+1]);
+        b.append(remove_overlapping(a[i+1],i>1).tolist());b[i+1].sort();b[i+1]=numpy.array(b[i+1]);
+        #print "  b:",len(b[i+1]);
+        print "  b:",b[i+1].shape[0];
 
     #return {'a':a,'b':b}
+
     return b
 
 
