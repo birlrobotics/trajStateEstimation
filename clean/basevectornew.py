@@ -21,10 +21,23 @@ import matplotlib.pyplot as plt
 
 import vector_sympy
 reload(vector_sympy)
-from vector_sympy import dcc_base
+#from vector_sympy import dcc_base
+from load_data import normalize
 
+dcc_base = [[numpy.zeros(3)]]
+
+def gen_base_numpy():
+    global dcc_base
+    x,y,z = numpy.eye(3)
+    for i in [x,y,z]:
+        dcc_base[0].append(i)
+        dcc_base[0].append(-i)
+
+gen_base_numpy()
 
 def main(fig, it=3, oct=False):
+
+    global dcc_base
 
     plt.hold(True)
 
@@ -101,6 +114,8 @@ def main(fig, it=3, oct=False):
 
 
     base_ = dcc_base
+    #for i in dcc_base:
+    #    normalize(i)
     base = map(lambda bs_:set(map(tuple,bs_)),base_)
     baseadd = [base_[0]]
     for i in xrange(1,it):

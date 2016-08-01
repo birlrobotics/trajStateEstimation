@@ -1,3 +1,4 @@
+import sympy
 from sympy.physics.vector import *
 import numpy
 import datadumper
@@ -7,7 +8,7 @@ from datadumper import dumper
 dcc_base_dump_file_name = "dcc_base.pydump"
 N = ReferenceFrame('N')
 
-def extend_base(a_,show=False):
+def extend_base(a_,it=1):
     a = []
     for i in a_:
         a.append(i)
@@ -15,13 +16,21 @@ def extend_base(a_,show=False):
     lla = len(lista)
     for i in xrange(lla):
         for j in xrange(i+1,lla):
-            if show:
+            if it>1:
                 print "\r",i,j,
-            to_add = (lista[i]+lista[j]).normalize()
-            if not show:
+            to_add = lista[i]+lista[j]
+            #print "[[",to_add.to_matrix(N).norm(),"]]"
+            #assert not any(map(lambda x:x is sympy.nan,lista[i].to_matrix(N).evalf())),repr(lista[i])+"\n"+repr(lista[i].to_matrix(N))
+            #assert not any(map(lambda x:x is sympy.nan,lista[j].to_matrix(N).evalf())),repr(lista[j])+"\n"+repr(lista[j].to_matrix(N))
+            if True:
+                assert not any(map(lambda x:x is sympy.nan,to_add.to_matrix(N).evalf())),repr(to_add)+"\n"+repr(to_add.to_matrix(N))
+                if to_add.to_matrix(N).norm() != 0:
+                    to_add = to_add.normalize()
+                assert not any(map(lambda x:x is sympy.nan,to_add.to_matrix(N).evalf())),repr(to_add)+"\n"+repr(to_add.to_matrix(N))
+            if it<=1 or True:
                 to_add = to_add.simplify()
             a.append(to_add)
-    if show:
+    if it>1:
         print "\r            \r",
     return set(a)
 
@@ -30,10 +39,14 @@ def remove_overlapping(a,show=False):
     for ni,i in enumerate(list(a)):
         if show:
             print "\r",ni,
-        b_.add( i.to_matrix(N).evalf() )
+        newone = i.to_matrix(N).evalf()
+        #assert not any(map(lambda x:x is sympy.nan,newone)),repr(newone)+"\n"+repr(i)+"\n"+repr(i.to_matrix(N))
+        b_.add( newone )
     b = []
     for i in b_:
-        b.append(numpy.array(i).astype(float))
+        newone2 = numpy.array(i).astype(float)
+        #assert not numpy.isnan(newone2).any()
+        b.append(newone2)
     if show:
         print "\r            \r",
     b = numpy.array(b)
@@ -59,13 +72,18 @@ def gen_base(iter=1):
     print N.x*0
 
     print "0 | a:",len(a[0]),
-    b.append(remove_overlapping(a[0]));print "  b:",len(b[0]);
+    b.append(remove_overlapping(a[0]).tolist())
+    b[0].sort(base_sort_cmp)
+    b[0] = numpy.array(b[0])
+    print "  b:",b[0].shape[0]
 
     for i in xrange(iter):
-        a.append(extend_base(a[i],i>1));print str(i+1)+" | a:",len(a[i+1]),
-        b.append(remove_overlapping(a[i+1],i>1).tolist());b[i+1].sort();b[i+1]=numpy.array(b[i+1]);
-        #print "  b:",len(b[i+1]);
-        print "  b:",b[i+1].shape[0];
+        a.append(extend_base(a[i],i+1));print str(i+1)+" | a:",len(a[i+1]),
+        b.append(remove_overlapping(a[i+1],i>1).tolist());
+        b[i+1].sort(base_sort_cmp)
+        b[i+1]=numpy.array(b[i+1])
+        #print "  b:",len(b[i+1])
+        print "  b:",b[i+1].shape[0]
 
     #return {'a':a,'b':b}
 
