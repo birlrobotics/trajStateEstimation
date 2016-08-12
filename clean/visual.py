@@ -18,6 +18,10 @@ import load_data
 reload(load_data)
 from load_data import data, dcc_base
 
+import basevectornew_numpy
+reload(basevectornew_numpy)
+from basevectornew_numpy import draw_all_basis
+
 #   hiro_cartpos_process_all_traj.py (show trajs)
 # - hiro_cartpos_code_visualize.py (colormaps)
 # - hiro_cartpos_git_updater.py (frames on path)
@@ -96,13 +100,12 @@ def drawframes(r,frames,ax):
 
 
 def showit():
+    draw_all_basis()
     for i in data:
         for j in data[i]:
-            codeshow(data,i,j,'FF_code',1)
-            codeshow(data,i,j,'AFF_code',1)
-            codeshow(data,i,j,'FF_code',2)
-            codeshow(data,i,j,'AFF_code',2)
-
+            for k in xrange(3):
+                codeshow(data,i,j,'FF_code',k)
+                codeshow(data,i,j,'AFF_code',k)
     #plt.show()
 
 showit()

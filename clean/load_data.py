@@ -1,9 +1,11 @@
 import os
 import numpy
-import vector_sympy
-reload(vector_sympy)
-from vector_sympy import dumper, dcc_base
-
+#import vector_sympy
+#reload(vector_sympy)
+#from vector_sympy import dumper, dcc_base
+import basevectornew_numpy
+reload(basevectornew_numpy)
+from basevectornew_numpy import dumper, dcc_base, normalize
 
 
 # get the absolute path
@@ -54,13 +56,6 @@ def reader(filename):
                 x[:len(x)-2].split('\t'))
             ,lines))
     return data
-
-
-
-def normalize(v,axis=1): #vectors, shape=(n,3)
-    v_norm = numpy.linalg.norm( v, axis=axis )
-    nonzero = v_norm != 0 # zero may exists
-    v[nonzero] /= numpy.expand_dims(v_norm,2)[nonzero] 
 
 
 def basegen19One(t, n, b):
@@ -528,15 +523,14 @@ data = dumper.save_load(
 )
 
 
-
 def sampleviewone():
     global data
     a = data
-    a = a[a.keys()[0]]
+    a = a[a.keys()[1]]
     a = a[a.keys()[0]]
     a = a[a.keys()[15]]
-    print "FF code\n",a['FF_code_91'],"\n"
-    print "AFF code\n",a['AFF_code_91'],"\n"
+    print "FF code\n",''.join(map(str,a['FF_code_91'])),"\n"
+    print "AFF code\n",''.join(map(str,a['AFF_code_91'])),"\n"
     return a
 
 #sample91a = sampleviewone()
