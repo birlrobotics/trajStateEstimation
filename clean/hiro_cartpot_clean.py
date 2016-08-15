@@ -20,7 +20,6 @@ data_name_map = {
 }
 
 
-
 def resample(r,npoint):
     assert len(r.shape)==2
     old_n = r.shape[0]
@@ -55,7 +54,7 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
 #def main(data_name, align="cut",subset=True):
     '''
 @param data_name (str): ["A","B","C"] and any combination of them
-@param align (str): ["cut","interp","dtw"(not implemented yet)]
+@param align (str): ["cut","interp","extend","dtw"(not implemented yet)]
 @param encode (str): ["FF","AFF"], use FF or AFF
 @param level (str): ["task", "behavior"]
 @param subset (bool): 
@@ -76,6 +75,10 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
         "dataset" : data_name,
         "accuracy" : dict.fromkeys(clfname), # result table
     }
+
+    assert align in ("cut","interp","extend")
+    assert encode in ("FF","AFF")
+    assert level in ("task","behavior")
     
     assert(type(data_name) is str)
     global data        
@@ -86,7 +89,8 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
         data_list.append(data_name_map[i])
 
     lengths = []
-    typeorder = []
+    #typeorder = []
+    classCount = 0
     testX = []
     testY = []
     caterange_min = 0
@@ -95,11 +99,12 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
     print "================================="
     print "data selected :",data_name
 
+    
     cls_behavior = True
 
     for i in data_list:
         for j in data[i]:
-            typeorder.append(i+'-'+j)
+            #typeorder.append(i+'-'+j)
             if cls_behavior:
                 maxcatek = 0
             else:
@@ -112,8 +117,8 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
                 if cls_behavior:
                     for l in xrange(ncatek):
                         newdata = data[i][j][k]['r_split'][l]
-                        if(newdata.shape[0]<100):
-                            continue
+                        #if(newdata.shape[0]<100):
+                        #    continue
                         testX.append(newdata)
                         testY.append(caterange_min+l)
                         lengths.append(newdata.shape[0])
@@ -152,89 +157,8 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
     nvalpass = dict.fromkeys(clfname,0)
     time_st = time.clock()
 
-    # N-fold cross validation
-    if False:
-        for ival in xrange(totalnum):
 
-            X = numpy.delete(X_,ival,0)
-            Y = numpy.delete(Y_,ival)
-            print ival,"\t",X.shape,Y.shape,
-
-            C = 1.0  # SVM regularization parameter
-            svc = svm.SVC(kernel='linear', C=C).fit(X, Y)
-            rbf_svc = svm.SVC(kernel='rbf', gamma=0.7, C=C).fit(X, Y)
-            poly_svc = svm.SVC(kernel='poly', degree=3, C=C).fit(X, Y)
-            lin_svc = svm.LinearSVC(C=C).fit(X, Y)
-
-            for i, clf in enumerate((svc, lin_svc, rbf_svc, poly_svc)):
-                #Z = clf.predict(X)
-                #a = Z==Y
-                Z = clf.predict([X_[ival]])
-                if Z==Y_[ival]:
-                    nvalpass[clfname[i]] += 1
-                print clfname[i],#avgstrlen,
-                print "(","PA  " if Z==Y_[ival] else "  FA", int(Z[0]), int(Y_[ival]),") ",
-                #print (a.shape[0]-a.sum()),
-                #print float(a.shape[0]),
-                #print (a.shape[0]-a.sum())/float(a.shape[0])
-                #for i,j in enumerate(a):
-                #    if(not j):
-                #        print i,Y[i]
-            time_insec = int(time.clock()-time_st)#int((time.clock()-time_st)*100)
-            time_inmin = time_insec/60
-            time_insec = time_insec%60
-            print time_inmin,"min",time_insec,"sec"
-        
-        for i in nvalpass:
-            print i,nvalpass[i],totalnum,nvalpass[i]/float(totalnum)
-
-    # k-fold validation
-    elif False:
-        testtime = 200
-        kfold = 5
-        ntest = totalnum/kfold
-        ntrain = totalnum - ntest
-        for ival in xrange(testtime):
-            tests = random.sample(xrange(totalnum),ntest)
-            trains = list(set(xrange(totalnum)).difference(tests))
-
-            X = X_[trains]
-            Y = Y_[trains]
-            print ival,"\t",X.shape,Y.shape,
-
-            C = 1.0  # SVM regularization parameter
-            svc = svm.SVC(kernel='linear', C=C).fit(X, Y)
-            rbf_svc = svm.SVC(kernel='rbf', gamma=0.7, C=C).fit(X, Y)
-            poly_svc = svm.SVC(kernel='poly', degree=3, C=C).fit(X, Y)
-            lin_svc = svm.LinearSVC(C=C).fit(X, Y)
-
-            for i, clf in enumerate((svc, lin_svc, rbf_svc, poly_svc)):
-                nvalpassin = 0
-                #Z = clf.predict(X)
-                #a = Z==Y
-                Z = clf.predict(X_[tests])
-                testY_ = Y_[tests] 
-                for j in xrange(ntest):
-                    if Z[j]==testY_[j]:
-                        nvalpassin += 1
-                nvalpass[clfname[i]] += nvalpassin
-                print clfname[i],#avgstrlen,
-                print "(","P",nvalpassin,"/", ntest,"-",int(nvalpassin/float(ntest)*100),"% ) ",
-                #print (a.shape[0]-a.sum()),
-                #print float(a.shape[0]),
-                #print (a.shape[0]-a.sum())/float(a.shape[0])
-                #for i,j in enumerate(a):
-                #    if(not j):
-                #        print i,Y[i]
-            time_insec = int(time.clock()-time_st)#int((time.clock()-time_st)*100)
-            time_inmin = time_insec/60
-            time_insec = time_insec%60
-            print time_inmin,"min",time_insec,"sec"
-        
-        for i in nvalpass:
-            print i,nvalpass[i],ntest*testtime,nvalpass[i]/float(ntest*testtime)
-
-    else:
+    if True:
         testtime = 10
         kfoldmax = 20
         for kfold in xrange(2,kfoldmax+1):

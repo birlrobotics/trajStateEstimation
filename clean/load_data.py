@@ -1,11 +1,9 @@
 import os
 import numpy
-#import vector_sympy
-#reload(vector_sympy)
-#from vector_sympy import dumper, dcc_base
-import basevectornew_numpy
-reload(basevectornew_numpy)
-from basevectornew_numpy import dumper, dcc_base, normalize
+import vector_sympy
+reload(vector_sympy)
+from vector_sympy import dumper, dcc_base
+
 
 
 # get the absolute path
@@ -25,23 +23,25 @@ And return the dict-tree structure to store data.
     for i in filename:
         filename[i] = {}
         for j in tasktype_tree[i]:
+            print j
             path = root+'/'+i+'/'
             # find all CartPos*.dat files
             CartFileList = os.popen(
                 'cd '+path+
-                ' && find . -maxdepth 3 -name "CartPos*" |grep "\./'+j+
-                '.*/CartPos*"').read().strip('./').strip().split('\n./') 
+                ' && find . -maxdepth 3 -name "R_CartPos*" |grep "\./'+j+
+                '.*/R_CartPos*"').read().strip('./').strip().split('\n./') 
             #        CartFileList = os.popen('find '+path+' -maxdepth 3 -name "CartPos*" |grep "'+i+'/'+j+'.*/CartPos*"').read() # find all CartPos*.dat files
 
             print path
             CartFileList.sort(reverse=True)
-            PathList = dict(map(lambda x:(x[:x.find("CartPos")],x[x.find("CartPos"):]),CartFileList))
+            #print CartFileList
+            PathList = dict(map(lambda x:(x[:x.find("R_CartPos")],x[x.find("R_CartPos"):]),CartFileList))
             CartFileList = PathList.values()
             PathList = PathList.keys()
             len_filelist = len(PathList)
             StateFileList = [None]*len_filelist
             for li in xrange(len_filelist):
-                StateFileList[li] = os.popen('cd "'+path+PathList[li]+'" && find . -name "State*.dat"|grep "\./State"').read().strip('./').strip().split()[0]
+                StateFileList[li] = os.popen('cd "'+path+PathList[li]+'" && find . -name "R_State*.dat"|grep "\./R_State"').read().strip('./').strip().split()[0]
                 filename[i][j] = dict(zip(PathList,map(lambda x:{"CartPos":x[0],"State":x[1]},zip(CartFileList,StateFileList))))
     return filename
 
@@ -56,6 +56,13 @@ def reader(filename):
                 x[:len(x)-2].split('\t'))
             ,lines))
     return data
+
+
+
+def normalize(v,axis=1): #vectors, shape=(n,3)
+    v_norm = numpy.linalg.norm( v, axis=axis )
+    nonzero = v_norm != 0 # zero may exists
+    v[nonzero] /= numpy.expand_dims(v_norm,2)[nonzero] 
 
 
 def basegen19One(t, n, b):
@@ -402,7 +409,7 @@ def gencodedata(data, process=[]):
     return data
 
 
-filename_cartpose_corrected = 'CartPosCorrected.dat'
+filename_cartpose_corrected = 'R_CartPos_Corrected.dat'
 def poscorrectedsave(datapack):
     data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
     global filename_cartpose_corrected
@@ -444,7 +451,7 @@ def save_code_FF(datapack,it):
     timestamp_i = dataijk['state_stamp']
     for tsi in xrange(1,len(timestamp_i)):
         splitc.append(proccode[timestamp_i[tsi-1]:timestamp_i[tsi]])
-    dataijk['FF_code_split'] = splitc
+    dataijk['FF_code_split_'+str(DCC_BASE_NUM)] = splitc
 
 def save_code_AFF(datapack,it):
     data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
@@ -456,7 +463,7 @@ def save_code_AFF(datapack,it):
     timestamp_i = dataijk['state_stamp']
     for tsi in xrange(1,len(timestamp_i)):
         splitc.append(proccode[timestamp_i[tsi-1]:timestamp_i[tsi]])
-    dataijk['AFF_code_split'] = splitc
+    dataijk['AFF_code_split_'+str(DCC_BASE_NUM)] = splitc
 
 
 
@@ -470,7 +477,7 @@ codedir = 'trajcode'
 alldatafile = "alldata.pydump"
 
 tasktype_tree = {
-    'data_003_SIM_HIRO_SA_Success': ['2012','2016'],
+    'data_003_SIM_HIRO_SA_Success': ['2016',"Trial","Test"],
     'data_004_SIM_HIRO_SA_ErrorCharac_Prob': ['FC','exp'],
     'data_008_HIRO_SideApproach_SUCCESS':['2012','x']
 }
@@ -523,14 +530,15 @@ data = dumper.save_load(
 )
 
 
+
 def sampleviewone():
     global data
     a = data
-    a = a[a.keys()[1]]
+    a = a[a.keys()[0]]
     a = a[a.keys()[0]]
     a = a[a.keys()[15]]
-    print "FF code\n",''.join(map(str,a['FF_code_91'])),"\n"
-    print "AFF code\n",''.join(map(str,a['AFF_code_91'])),"\n"
+    print "FF code\n",a['FF_code_91'],"\n"
+    print "AFF code\n",a['AFF_code_91'],"\n"
     return a
 
 #sample91a = sampleviewone()
