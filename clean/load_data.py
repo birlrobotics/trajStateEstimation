@@ -25,23 +25,25 @@ And return the dict-tree structure to store data.
     for i in filename:
         filename[i] = {}
         for j in tasktype_tree[i]:
+            print j
             path = root+'/'+i+'/'
             # find all CartPos*.dat files
             CartFileList = os.popen(
                 'cd '+path+
-                ' && find . -maxdepth 3 -name "CartPos*" |grep "\./'+j+
-                '.*/CartPos*"').read().strip('./').strip().split('\n./') 
+                ' && find . -maxdepth 3 -name "R_CartPos*" |grep "\./'+j+
+                '.*/R_CartPos*"').read().strip('./').strip().split('\n./') 
             #        CartFileList = os.popen('find '+path+' -maxdepth 3 -name "CartPos*" |grep "'+i+'/'+j+'.*/CartPos*"').read() # find all CartPos*.dat files
 
             print path
             CartFileList.sort(reverse=True)
-            PathList = dict(map(lambda x:(x[:x.find("CartPos")],x[x.find("CartPos"):]),CartFileList))
+            #print CartFileList
+            PathList = dict(map(lambda x:(x[:x.find("R_CartPos")],x[x.find("R_CartPos"):]),CartFileList))
             CartFileList = PathList.values()
             PathList = PathList.keys()
             len_filelist = len(PathList)
             StateFileList = [None]*len_filelist
             for li in xrange(len_filelist):
-                StateFileList[li] = os.popen('cd "'+path+PathList[li]+'" && find . -name "State*.dat"|grep "\./State"').read().strip('./').strip().split()[0]
+                StateFileList[li] = os.popen('cd "'+path+PathList[li]+'" && find . -name "R_State*.dat"|grep "\./R_State"').read().strip('./').strip().split()[0]
                 filename[i][j] = dict(zip(PathList,map(lambda x:{"CartPos":x[0],"State":x[1]},zip(CartFileList,StateFileList))))
     return filename
 
@@ -402,7 +404,7 @@ def gencodedata(data, process=[]):
     return data
 
 
-filename_cartpose_corrected = 'CartPosCorrected.dat'
+filename_cartpose_corrected = 'R_CartPos_Corrected.dat'
 def poscorrectedsave(datapack):
     data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
     global filename_cartpose_corrected
@@ -444,7 +446,7 @@ def save_code_FF(datapack,it):
     timestamp_i = dataijk['state_stamp']
     for tsi in xrange(1,len(timestamp_i)):
         splitc.append(proccode[timestamp_i[tsi-1]:timestamp_i[tsi]])
-    dataijk['FF_code_split'] = splitc
+    dataijk['FF_code_split_'+str(DCC_BASE_NUM)] = splitc
 
 def save_code_AFF(datapack,it):
     data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
@@ -456,7 +458,7 @@ def save_code_AFF(datapack,it):
     timestamp_i = dataijk['state_stamp']
     for tsi in xrange(1,len(timestamp_i)):
         splitc.append(proccode[timestamp_i[tsi-1]:timestamp_i[tsi]])
-    dataijk['AFF_code_split'] = splitc
+    dataijk['AFF_code_split_'+str(DCC_BASE_NUM)] = splitc
 
 
 
@@ -470,7 +472,7 @@ codedir = 'trajcode'
 alldatafile = "alldata.pydump"
 
 tasktype_tree = {
-    'data_003_SIM_HIRO_SA_Success': ['2012','2016'],
+    'data_003_SIM_HIRO_SA_Success': ['2016',"Trial","Test"],
     'data_004_SIM_HIRO_SA_ErrorCharac_Prob': ['FC','exp'],
     'data_008_HIRO_SideApproach_SUCCESS':['2012','x']
 }

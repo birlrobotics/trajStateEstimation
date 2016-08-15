@@ -14,12 +14,12 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from copy import deepcopy
 
-import load_data
-reload(load_data)
+#import load_data
+#reload(load_data)
 from load_data import data, dcc_base
 
-import basevectornew_numpy
-reload(basevectornew_numpy)
+#import basevectornew_numpy
+#reload(basevectornew_numpy)
 from basevectornew_numpy import draw_all_basis
 
 #   hiro_cartpos_process_all_traj.py (show trajs)
@@ -27,37 +27,58 @@ from basevectornew_numpy import draw_all_basis
 # - hiro_cartpos_git_updater.py (frames on path)
 
 #hiro_cartpos_code_visualize.py
-def codeshow(data,ka,kb,type_,it):
+def codeshow(data,ka,kb,type_,it,cut=True,show=False):
     s = data[ka][kb]
     ss = []
     minlen = numpy.inf
 
     DCC_BASE_NUM = dcc_base[it].shape[0]    
-    typename_ = type_+'_'+str(DCC_BASE_NUM)
+    
+    
+
+    typename_ = type_+'_code_'+str(DCC_BASE_NUM)
     for i in s:
         codestr = s[i][typename_]
         ss.append(deepcopy(codestr))
-        if len(codestr)<minlen:
-            minlen = len(codestr)
-        #plt.plot(s[i],'o-')
 
-    print minlen,ka,kb
-    for i in xrange(len(ss)):
-        ss[i] = ss[i][:minlen]
+    if cut:
+        minlen = len(reduce(lambda x,y: x if len(x)<len(y) else y,ss))
+        #for codestr in ss:
+        #    if len(codestr)<minlen:
+        #        minlen = len(codestr)
+            #plt.plot(s[i],'o-')
+
+        print ka,kb,minlen,type_,DCC_BASE_NUM
+        
+        for i in xrange(len(ss)):
+            ss[i] = ss[i][:minlen]
+    
+    else:
+        maxlen = len(reduce(lambda x,y:x if len(x)>len(y) else y,ss))
+
+        print ka,kb,maxlen,type_,DCC_BASE_NUM
+
+        for i in xrange(len(ss)):
+            lssi = len(ss[i])
+            #print ss[i],type(ss[i])
+            ss[i] = ss[i].tolist()+[0]*(maxlen-lssi)
 
     nss = numpy.array(ss)
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
 
-    cax = ax.imshow(nss, interpolation='none', extent=[0,minlen,0,len(ss)], aspect='auto', cmap='afmhot')
+    cax = ax.imshow(nss, interpolation='none', extent=[0,minlen if cut else maxlen,0,len(ss)], aspect='auto', cmap='afmhot')
 
-    typename_ = typename_.replace(type_,type_.split('_')[0])
+    typename_ = typename_.replace('_code','')
     
-    ax.set_title(ka+' ['+kb+']_'+typename_)
-    os.system('mkdir -p codemap')
-    fig.savefig('./codemap/'+ka+'['+kb+']_'+typename_+'.png')
-    plt.close(fig)
+    figure_title = ka+' ['+kb+']_'+typename_+('_cut' if cut else '_full')
+    ax.set_title(figure_title)
+    image_path = '/'.join(['./codemap',str(DCC_BASE_NUM),('cut' if cut else 'full'),type_,''])
+    os.system('mkdir -p '+image_path)
+    fig.savefig(image_path+figure_title+'.png')
+    if not show:
+        plt.close(fig)
 
 
 
@@ -100,12 +121,19 @@ def drawframes(r,frames,ax):
 
 
 def showit():
-    draw_all_basis()
-    for i in data:
-        for j in data[i]:
-            for k in xrange(3):
-                codeshow(data,i,j,'FF_code',k)
-                codeshow(data,i,j,'AFF_code',k)
+    if False:
+        draw_all_basis()
+    if True:
+        for i in data:
+            for j in data[i]:
+                for k in xrange(3):
+                    #codeshow(data,i,j,'FF',k,show=True)
+                    #return 
+                    codeshow(data,i,j,'FF',k)
+                    codeshow(data,i,j,'AFF',k)
+                    codeshow(data,i,j,'FF',k,cut=False)
+                    codeshow(data,i,j,'AFF',k,cut=False)
+
     #plt.show()
 
 showit()
