@@ -1,9 +1,11 @@
 import os
 import numpy
-import vector_sympy
-reload(vector_sympy)
-from vector_sympy import dumper, dcc_base
-
+#import vector_sympy
+#reload(vector_sympy)
+#from vector_sympy import dumper, dcc_base
+#import basevectornew_numpy
+#reload(basevectornew_numpy)
+from basevectornew_numpy import dumper, dcc_base, normalize
 
 
 # get the absolute path
@@ -56,13 +58,6 @@ def reader(filename):
                 x[:len(x)-2].split('\t'))
             ,lines))
     return data
-
-
-
-def normalize(v,axis=1): #vectors, shape=(n,3)
-    v_norm = numpy.linalg.norm( v, axis=axis )
-    nonzero = v_norm != 0 # zero may exists
-    v[nonzero] /= numpy.expand_dims(v_norm,2)[nonzero] 
 
 
 def basegen19One(t, n, b):
@@ -300,7 +295,19 @@ def AFFencode(r,it=1):
             if(numpy.abs(cos_)>=1):
                 cos_ = 1 if cos_>0 else -1
             angle = numpy.arccos(cos_)
-            assert angle >= 0
+            assert angle >= 0, ("Error: angle < 0,\n"
+                                " angle=%f, cos_=%f, n_i_1=%f, n_i=%f\n"
+                                " base0 = %s\n"
+                                " t[i] = %s\n"
+                                " t = %s\n"
+                                " n = %s\n"
+                                " b = %s\n"
+                                " r = %s\n"
+                                %(angle,cos_,n_i_1,n_i,
+                                  repr(base0),repr(t[i]),
+                                  repr(t),repr(n),repr(b),repr(r)
+                              ))
+                
             #print angle,bound,angle>bound
 
         if(angle > bound):
@@ -324,7 +331,7 @@ def AFFencode(r,it=1):
             #print "="*10
 
         base1,base0 = base0,base1
-    print ""
+    #print ""
     return code.astype(int)
 
 
@@ -377,23 +384,31 @@ def gencodedata(data, process=[]):
                 timestamp = map(float,open(fullpath+dataijk['State'],"r").read().strip().split())
                 alldata =reader(fullpath+dataijk['CartPos'])
 
+                timestamp_list = alldata[:,0]
                 r = alldata[:,1:4]
+                assert not r.shape[0] < 10, "r.shape[0] = %d"%(r.shape[0])
+                assert not numpy.isnan(r).any(), ("trajectory has NaNs."
+                                                  "location: %s"
+                                                  %(' '.join([i,k])))
 
                 correctR(r)
 
                 timestamp_i = map(lambda x:alldata[:,0].searchsorted(x),timestamp)
                 dataijk['state_stamp'] = timestamp_i
                 dataijk['r'] = r
+                dataijk['time'] = timestamp_list
                 print i,j,k
                 dataijk['length'] = r.shape[0]
 
 
                 splitr = []
+                splittimelist = []
                 timestamp_i.append(r.shape[0])
                 for tsi in xrange(1,len(timestamp_i)):
                     splitr.append(r[timestamp_i[tsi-1]:timestamp_i[tsi]])
-
+                    splittimelist.append(timestamp_list[timestamp_i[tsi-1]:timestamp_i[tsi]])
                 dataijk['r_split'] = splitr
+                dataijk['time_split'] = splittimelist
                     
                 datapack = [data,i,j,k,dataijk,fullpath,alldata,timestamp]
                 for p in process:
@@ -451,7 +466,7 @@ def save_code_FF(datapack,it):
     timestamp_i = dataijk['state_stamp']
     for tsi in xrange(1,len(timestamp_i)):
         splitc.append(proccode[timestamp_i[tsi-1]:timestamp_i[tsi]])
-    dataijk['FF_code_split_'+str(DCC_BASE_NUM)] = splitc
+    dataijk['FF_code_'+str(DCC_BASE_NUM)+'_split'] = splitc
 
 def save_code_AFF(datapack,it):
     data,i,j,k,dataijk,fullpath,alldata,timestamp = datapack
@@ -463,7 +478,7 @@ def save_code_AFF(datapack,it):
     timestamp_i = dataijk['state_stamp']
     for tsi in xrange(1,len(timestamp_i)):
         splitc.append(proccode[timestamp_i[tsi-1]:timestamp_i[tsi]])
-    dataijk['AFF_code_split_'+str(DCC_BASE_NUM)] = splitc
+    dataijk['AFF_code_'+str(DCC_BASE_NUM)+'_split'] = splitc
 
 
 
@@ -480,6 +495,12 @@ tasktype_tree = {
     'data_003_SIM_HIRO_SA_Success': ['2016',"Trial","Test"],
     'data_004_SIM_HIRO_SA_ErrorCharac_Prob': ['FC','exp'],
     'data_008_HIRO_SideApproach_SUCCESS':['2012','x']
+}
+
+data_name_map = {
+    'A' : 'data_003_SIM_HIRO_SA_Success',
+    'B' : 'data_004_SIM_HIRO_SA_ErrorCharac_Prob',
+    'C' : 'data_008_HIRO_SideApproach_SUCCESS',
 }
 
 filenames = dumper.save_load(
@@ -530,15 +551,14 @@ data = dumper.save_load(
 )
 
 
-
 def sampleviewone():
     global data
     a = data
-    a = a[a.keys()[0]]
+    a = a[a.keys()[1]]
     a = a[a.keys()[0]]
     a = a[a.keys()[15]]
-    print "FF code\n",a['FF_code_91'],"\n"
-    print "AFF code\n",a['AFF_code_91'],"\n"
+    print "FF code\n",''.join(map(str,a['FF_code_91'])),"\n"
+    print "AFF code\n",''.join(map(str,a['AFF_code_91'])),"\n"
     return a
 
 #sample91a = sampleviewone()

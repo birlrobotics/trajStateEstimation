@@ -17,8 +17,8 @@ matplotlib.interactive(True)
 from copy import deepcopy
 
 
-import datadumper
-reload(datadumper)
+#import datadumper
+#reload(datadumper)
 from datadumper import dumper
 
 def base_sort_cmp(x,y):

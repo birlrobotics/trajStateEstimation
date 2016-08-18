@@ -12,14 +12,13 @@ from load_data import *
 print 'OK.\n'
 
 
-
-data_name_map = {
-    'A' : 'data_003_SIM_HIRO_SA_Success',
-    'B' : 'data_004_SIM_HIRO_SA_ErrorCharac_Prob',
-    'C' : 'data_008_HIRO_SideApproach_SUCCESS',
-}
-
-
+# problem[1]: didn't consider the time (can't handle `halt` points)
+# solution[1]: Use 4-dimensional arrays (with unit step in time axis)
+#
+# problem[2]: 
+# solution[2]: 
+#
+# TODO: Create a new resample() method to replace this
 def resample(r,npoint):
     assert len(r.shape)==2
     old_n = r.shape[0]
@@ -38,31 +37,51 @@ def resample(r,npoint):
     
     o_ptr = 0 # point counter on old path
     o_acc_len = 0 # accumulated length on old path
+    o_seg_len_nonzero = 0
     for i in xrange(1,new_n-1):
         while(o_acc_len<step):
             o_ptr += 1
             o_acc_len += len_dr[o_ptr]
-        pos_percentage = (len_dr[o_ptr]-(o_acc_len-step))/len_dr[o_ptr]
+            if len_dr[o_ptr]:
+                o_seg_len_nonzero = len_dr[o_ptr]
+        assert o_seg_len_nonzero,"%f %f\n%s"%(o_acc_len,step,repr(r))
+        pos_percentage = (o_seg_len_nonzero-(o_acc_len-step))/o_seg_len_nonzero
         rr[i] = r[o_ptr-1] + dr[o_ptr]*pos_percentage
         o_acc_len -= step
 
     return rr
 
 
+# 4D interpolation of 3D trajectories
+# not ready yet.
+def resample_time(_r,npoint,times):
+    assert isinstance(_r, numpy.ndarray)
+    assert isinstance(times, numpy.ndarray)
+    assert len(_r.shape) == 2
+    assert len(times.shape) == 1
+    assert _r.shape[0] == times.shape[0]
+    l = _r.shape[0]
+    dim = _r.shape[1]
+    r = numpy.zeros((l,dim+1))
+    r[:,:dim] = _r
+    r[:, dim] = times
+    return resample(r,npoint)[:,:dim]
 
-def main(data_name, align="cut",encode="FF",level="task",subset=True):
+
+def main(data_name, align="cut",encode="FF",level="task",subset=False,base=1):
 #def main(data_name, align="cut",subset=True):
     '''
 @param data_name (str): ["A","B","C"] and any combination of them
 @param align (str): ["cut","interp","extend","dtw"(not implemented yet)]
 @param encode (str): ["FF","AFF"], use FF or AFF
 @param level (str): ["task", "behavior"]
-@param subset (bool): 
+@param subset (bool): (Not implemented)
       Whether to separate datasets into smaller subsets or not. 
       True for separation.
 ##@param svmimpl (str): ["SVC_linear", "SVC_RBF", "SVC_Polynomial", "LinearSVC"]
 ##      implementation of svm, 
 ##      more implementations should be added in the future.
+@param base (int): which base to choose
 '''
 
     clfname = "svc, lin_svc, rbf_svc, poly_svc".split(', ')
@@ -73,8 +92,26 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
         "level" : level,
         "subset" : subset,
         "dataset" : data_name,
+        "avg_len" : None,
+        "min_len" : None,
+        "max_len" : None,
         "accuracy" : dict.fromkeys(clfname), # result table
     }
+
+    #===================================
+    #
+    # SOME BEHAVIOR SEGMENTS HAVE VERY SMALL LENGTHS
+    # WHICH SHOULD BE IGNORED DIRECTLY
+    # USE THIS `r_len_threshold` PARAMETER TO 
+    # CONSTRAIN THE LENGTH OF THE STRINGS TO BE TRAINED & CLASSIFIED
+    # 
+    #===================================
+    r_len_threshold = 100
+
+    testtime = 10
+    kfoldmax = 20    
+    for i in test_result['accuracy']:
+        test_result['accuracy'][i] = dict.fromkeys(xrange(2,kfoldmax+1))
 
     assert align in ("cut","interp","extend")
     assert encode in ("FF","AFF")
@@ -89,9 +126,11 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
         data_list.append(data_name_map[i])
 
     lengths = []
-    #typeorder = []
+    typeorder = []
     classCount = 0
     testX = []
+    Xtimes = []
+    testX_precomputed_code = []
     testY = []
     caterange_min = 0
 
@@ -99,51 +138,93 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
     print "================================="
     print "data selected :",data_name
 
-    
-    cls_behavior = True
+    if level == 'behavior':
+        cls_behavior = True
+    elif level == 'task':
+        cls_behavior = False      
+
+    code_type = '_'.join([encode,'code',str(dcc_base[base].shape[0])])+('_split' if cls_behavior else '')
 
     for i in data_list:
         for j in data[i]:
-            #typeorder.append(i+'-'+j)
+            typeorder.append(i+'-'+j)
             if cls_behavior:
                 maxcatek = 0
             else:
                 typeorder.append(i+'-'+j)
             for k in data[i][j]:
+                dataijk = data[i][j][k]
                 if cls_behavior:
-                    ncatek = len(data[i][j][k]['r_split'])
+                    ncatek = len(dataijk['r_split'])
                     if(maxcatek < ncatek):
                         maxcatek = ncatek
                 if cls_behavior:
                     for l in xrange(ncatek):
-                        newdata = data[i][j][k]['r_split'][l]
-                        #if(newdata.shape[0]<100):
-                        #    continue
+                        newdata = dataijk['r_split'][l]
+                        if(newdata.shape[0]<r_len_threshold):
+                            continue
                         testX.append(newdata)
+                        Xtimes.append(dataijk['time_split'][l])
+                        testX_precomputed_code.append(dataijk[code_type][l])
                         testY.append(caterange_min+l)
                         lengths.append(newdata.shape[0])
                 else:
-                    newdata = data[i][j][k]['r']
-                    #if(newdata.shape[0]<1000):
-                    #    continue
+                    newdata = dataijk['r']                               
+                    if(newdata.shape[0]<r_len_threshold):
+                        continue
+                    Xtimes.append(dataijk['time'])
                     testX.append(newdata)
+                    testX_precomputed_code.append(dataijk[code_type])
                     testY.append(len(typeorder)-1)
                     lengths.append(newdata.shape[0])
             if cls_behavior:
                 caterange_min += maxcatek
 
     avglen = sum(lengths)/len(lengths)
-    minlen_threshold = 500
     minlen = min(lengths)
+    maxlen = max(lengths)
+
+#===================================
+#
+#   IS THIS THRESHOLD NECCESSARY?
+#   HOW TO SET `minlen_threshold`?
+# 
+#===================================
+    minlen_threshold = r_len_threshold*5 #500
     if minlen < minlen_threshold:
         minlen = minlen_threshold
+
     
-    testX = map(lambda x:process(resample(x,avglen))['code'],testX)
+    base_size = str(dcc_base[base].shape[0])
+    
+    #code_name = encode+'_code'+base_size
+    
+    if encode=="FF":
+        process__ = FFencode
+    elif encode=='AFF':
+        process__ = AFFencode
+
+    if align == "interp":
+        #testX = map(lambda x:process__(resample(x,avglen))[code_name],testX)
+        testX = map(lambda x:process__(resample_time(x[0],avglen,x[1])),zip(testX,Xtimes))
+    elif align == "cut":
+        #testX = map(lambda x:process__(x[:minlen] if len(x)>=minlen else resample(x,minlen))[code_name],testX)
+        #testX = map(lambda x:testX_precomputed_code[x[0]][:minlen] if len(x[1])>=minlen else process__(resample(x[1],minlen)),enumerate(testX))
+        testX = map(lambda x:process__(x[0][:minlen] if len(x[0])>=minlen else resample_time(x[0],minlen,x[1])),zip(testX,Xtimes))
+    elif align == "extend":
+        testX = map(lambda x:process__(numpy.array(x.tolist()+[[0,0,0]]*(maxlen-x.shape[0]))),testX)
+
+
+    #print testX_precomputed_code[0]
 
     print 'avg:',avglen
     print 'min:',minlen
+    print 'max:',maxlen
+    test_result['avg_len'] = avglen
+    test_result['min_len'] = minlen
+    test_result['max_len'] = maxlen
 
-    #testX = map(lambda x:process(x[:minlen] if len(x)>=minlen else resample(x,minlen))['code'],testX)
+
     X_ = numpy.array(testX)
     Y_ = numpy.array(testY)
     totalnum = Y_.shape[0]
@@ -159,8 +240,6 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
 
 
     if True:
-        testtime = 10
-        kfoldmax = 20
         for kfold in xrange(2,kfoldmax+1):
             ntest = totalnum/kfold
             ntrain = totalnum - ntest
@@ -214,10 +293,46 @@ def main(data_name, align="cut",encode="FF",level="task",subset=True):
                 #print ntest*testtime,
                 #print '[',
                 print str(int(nvalpass[i]/float(ntest*testtime)*100)),
+
+                test_result['accuracy'][iname][kfold] = nvalpass[i]/float(ntest*testtime)*100.0
+
                 #print "%]",
                 print ",",
             print ""
 
+    return test_result
+
+
+def proc_all_dataset(align,encode,level,base):
+    #for subset in [True, False]:
+    results = []
+    main_ = lambda x: main(
+        x,
+        align=align,
+        encode=encode,
+        level=level,
+        subset=False,
+        base=base,
+    )
+    #if (level=='behavior'):
+    data_name__ = '_'.join(map(str,["result",align,encode,level,base,"part",""]))
+    main_dump = lambda x: dumper.save_load(
+        data_name__+x+'.pydump.result',
+        data=None,
+        mode=None,
+        datagen=main_,
+        param={'x':x},
+        dataname=data_name__+x,
+    )
+
+    results.append(main_dump("A"))
+    results.append(main_dump("B"))
+    results.append(main_dump("C"))
+    results.append(main_dump("AC"))
+    results.append(main_dump("BC"))
+    results.append(main_dump("ABC"))
+    return results
+    
 
 '''
 Design: 
@@ -227,7 +342,7 @@ Design:
    - Use text file currently, but database in the future.
 '''
 
-if __name__ == "__main__":
+def all_config_process(base):
     '''
 @param data_name (str): ["A","B","C"] and any combination of them
 @param align (str): ["cut","interp","dtw"(not implemented yet)]
@@ -240,23 +355,35 @@ if __name__ == "__main__":
 ##      implementation of svm, 
 ##      more implementations should be added in the future.
 '''
-
-    for align in ['cut','interp']:
+    all_config_result = []
+    for align in ['extend','cut','interp']:
         for encode in ['FF','AFF']:
             for level in ['task','behavior']:
-                #for subset in [True, False]:
-                main_ = lambda x: main(
-                    x,
-                    align=align,
-                    encode=encode,
-                    level=level,
-                    subset=True
+                data_name__ = '_'.join(map(str,["result",align,encode,level,base]))
+                one_conf_res = dumper.save_load(
+                    data_name__+'.pydump.result',
+                    data=None,
+                    mode=None,
+                    datagen=proc_all_dataset,
+                    param={
+                        'align':align,
+                        'encode':encode,
+                        'level':level,
+                        'base':base,
+                    },
+                    dataname=data_name__,
                 )
-                main_("A")
-                main_("B")
-                main_("C")
-                main_("AC")
-                main_("BC")
-                main_("ABC")
+                all_config_result.append(one_conf_res)
+    return all_config_result
 
 
+if __name__ == "__main__":    
+    base = 1
+    all_config_res = dumper.save_load(
+        "all_config_result"+str(base)+".pydump.result",
+        data=None,
+        mode=None,
+        datagen=all_config_process,
+        param={"base":base},
+        dataname="All config results",
+    )
