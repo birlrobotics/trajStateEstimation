@@ -26,8 +26,12 @@ from basevectornew_numpy import draw_all_basis
 # - hiro_cartpos_code_visualize.py (colormaps)
 # - hiro_cartpos_git_updater.py (frames on path)
 
+
+maxlen_k0 = max(map(len,data.keys()))
+maxlen_k1 = max(reduce(lambda x,y:x+y,map(lambda x:map(len,data[x].keys()),data.keys())))
+
 #hiro_cartpos_code_visualize.py
-def codeshow(data,ka,kb,type_,it,cut=True,show=False):
+def codeshow(data,ka,kb,type_,it,cut=True,show=False,nozero=False):
     s = data[ka][kb]
     ss = []
     minlen = numpy.inf
@@ -39,7 +43,14 @@ def codeshow(data,ka,kb,type_,it,cut=True,show=False):
     typename_ = type_+'_code_'+str(DCC_BASE_NUM)
     for i in s:
         codestr = s[i][typename_]
-        ss.append(deepcopy(codestr))
+        if(nozero):
+            ss.append(numpy.array(filter(lambda x:x,codestr)))
+        else:
+            ss.append(deepcopy(codestr))
+
+    print "%6s %4s %3s %-5d"%(("nozero" if nozero else "normal"),
+                              ("cut"    if cut    else "full"  ),
+                              type_,DCC_BASE_NUM),
 
     if cut:
         minlen = len(reduce(lambda x,y: x if len(x)<len(y) else y,ss))
@@ -48,7 +59,9 @@ def codeshow(data,ka,kb,type_,it,cut=True,show=False):
         #        minlen = len(codestr)
             #plt.plot(s[i],'o-')
 
-        print ka,kb,minlen,type_,DCC_BASE_NUM
+        print ("%-"+str(maxlen_k0)+"s "+
+               "%-"+str(maxlen_k1)+"s "+
+               "%d")%(ka,kb,minlen)
         
         for i in xrange(len(ss)):
             ss[i] = ss[i][:minlen]
@@ -56,7 +69,9 @@ def codeshow(data,ka,kb,type_,it,cut=True,show=False):
     else:
         maxlen = len(reduce(lambda x,y:x if len(x)>len(y) else y,ss))
 
-        print ka,kb,maxlen,type_,DCC_BASE_NUM
+        print ("%-"+str(maxlen_k0)+"s "+
+               "%-"+str(maxlen_k1)+"s "+
+               "%d")%(ka,kb,maxlen)
 
         for i in xrange(len(ss)):
             lssi = len(ss[i])
@@ -74,7 +89,7 @@ def codeshow(data,ka,kb,type_,it,cut=True,show=False):
     
     figure_title = ka+' ['+kb+']_'+typename_+('_cut' if cut else '_full')
     ax.set_title(figure_title)
-    image_path = '/'.join(['./codemap',str(DCC_BASE_NUM),('cut' if cut else 'full'),type_,''])
+    image_path = '/'.join(['./codemap',str(DCC_BASE_NUM),('cut' if cut else 'full'),('nozero' if nozero else 'normal'),type_,''])
     os.system('mkdir -p '+image_path)
     fig.savefig(image_path+figure_title+'.png')
     if not show:
@@ -125,14 +140,15 @@ def showit():
         draw_all_basis()
     if True:
         for i in data:
-            for j in data[i]:
-                for k in xrange(3):
-                    #codeshow(data,i,j,'FF',k,show=True)
-                    #return 
-                    codeshow(data,i,j,'FF',k)
-                    codeshow(data,i,j,'AFF',k)
-                    codeshow(data,i,j,'FF',k,cut=False)
-                    codeshow(data,i,j,'AFF',k,cut=False)
+            for j in data[i]:                
+                for nozero in [True,False]:
+                    for cut in [True,False]:
+                        for type_ in ['FF','AFF']:
+                            for k in xrange(3):
+                                #codeshow(data,i,j,'FF',k,show=True)
+                                #return 
+                                codeshow(data,i,j,type_,k,cut=cut,nozero=nozero)
+
 
     #plt.show()
 

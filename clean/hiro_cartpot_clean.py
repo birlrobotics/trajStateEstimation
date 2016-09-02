@@ -6,8 +6,8 @@ from sklearn import svm
 import time
 import random
 
-import load_data
-reload(load_data)
+#import load_data
+#reload(load_data)
 from load_data import *
 print 'OK.\n'
 
@@ -67,6 +67,7 @@ def resample_time(_r,npoint,times):
     r[:, dim] = times
     return resample(r,npoint)[:,:dim]
 
+clfname = "svc, lin_svc, rbf_svc, poly_svc".split(', ')
 
 def main(data_name, align="cut",encode="FF",level="task",subset=False,base=1):
 #def main(data_name, align="cut",subset=True):
@@ -84,7 +85,7 @@ def main(data_name, align="cut",encode="FF",level="task",subset=False,base=1):
 @param base (int): which base to choose
 '''
 
-    clfname = "svc, lin_svc, rbf_svc, poly_svc".split(', ')
+    global clfname
 
     test_result = {
         "align" : align,
@@ -325,12 +326,15 @@ def proc_all_dataset(align,encode,level,base):
         dataname=data_name__+x,
     )
 
-    results.append(main_dump("A"))
+    if (level=='behavior'):
+        results.append(main_dump("A"))
     results.append(main_dump("B"))
     results.append(main_dump("C"))
+    results.append(main_dump("AB"))
     results.append(main_dump("AC"))
     results.append(main_dump("BC"))
     results.append(main_dump("ABC"))
+
     return results
     
 

@@ -42,7 +42,9 @@ And return the dict-tree structure to store data.
             PathList = PathList.keys()
             len_filelist = len(PathList)
             StateFileList = [None]*len_filelist
+            #print path
             for li in xrange(len_filelist):
+                #print PathList[li]
                 StateFileList[li] = os.popen('cd "'+path+PathList[li]+'" && find . -name "R_State*.dat"|grep "\./R_State"').read().strip('./').strip().split()[0]
                 filename[i][j] = dict(zip(PathList,map(lambda x:{"CartPos":x[0],"State":x[1]},zip(CartFileList,StateFileList))))
     return filename
@@ -492,15 +494,15 @@ codedir = 'trajcode'
 alldatafile = "alldata.pydump"
 
 tasktype_tree = {
-    'data_003_SIM_HIRO_SA_Success': ['2016',"Trial","Test"],
-    'data_004_SIM_HIRO_SA_ErrorCharac_Prob': ['FC','exp'],
-    'data_008_HIRO_SideApproach_SUCCESS':['2012','x']
+    'SIM_HIRO_ONE_SA_SUCCESS': ['2016'],
+    'SIM_HIRO_ONE_SA_ERROR_CHARAC_Prob': ['FC','exp'],
+    'REAL_HIRO_ONE_SA_SUCCESS':['2012','x']
 }
 
 data_name_map = {
-    'A' : 'data_003_SIM_HIRO_SA_Success',
-    'B' : 'data_004_SIM_HIRO_SA_ErrorCharac_Prob',
-    'C' : 'data_008_HIRO_SideApproach_SUCCESS',
+    'A' : 'SIM_HIRO_ONE_SA_SUCCESS',
+    'B' : 'SIM_HIRO_ONE_SA_ERROR_CHARAC_Prob',
+    'C' : 'REAL_HIRO_ONE_SA_SUCCESS',
 }
 
 filenames = dumper.save_load(
