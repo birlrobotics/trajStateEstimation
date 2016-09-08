@@ -1,5 +1,7 @@
 import os
 import numpy
+import ipdb
+ipdb.set_trace()
 #import vector_sympy
 #reload(vector_sympy)
 #from vector_sympy import dumper, dcc_base
@@ -43,10 +45,15 @@ And return the dict-tree structure to store data.
             len_filelist = len(PathList)
             StateFileList = [None]*len_filelist
             #print path
-            for li in xrange(len_filelist):
-                #print PathList[li]
-                StateFileList[li] = os.popen('cd "'+path+PathList[li]+'" && find . -name "R_State*.dat"|grep "\./R_State"').read().strip('./').strip().split()[0]
-                filename[i][j] = dict(zip(PathList,map(lambda x:{"CartPos":x[0],"State":x[1]},zip(CartFileList,StateFileList))))
+            try:
+                for li in xrange(len_filelist):
+                    #print PathList[li]
+                    StateFileList[li] = os.popen('cd "'+path+PathList[li]+'" && find . -name "R_State*.dat"|grep "\./R_State"').read().strip('./').strip().split()[0]
+                    filename[i][j] = dict(zip(PathList,map(lambda x:{"CartPos":x[0],"State":x[1]},zip(CartFileList,StateFileList))))
+            except:
+                print path
+                print PathList[li]
+                print li
     return filename
 
 
@@ -486,19 +493,19 @@ def save_code_AFF(datapack,it):
 
 
 
-root = '~/temp/data'
+root = '~/sc/research/AIST/Results/ForceControl'
 root = get_abs_path(root)
 
 filenames_save = "filenames.pydump"
 codedir = 'trajcode'
 alldatafile = "alldata.pydump"
-
+# Create a dictionary for the experimental types.
 tasktype_tree = {
     'SIM_HIRO_ONE_SA_SUCCESS': ['2016'],
     'SIM_HIRO_ONE_SA_ERROR_CHARAC_Prob': ['FC','exp'],
     'REAL_HIRO_ONE_SA_SUCCESS':['2012','x']
 }
-
+# Create a dictioanry for a map of the experiment names
 data_name_map = {
     'A' : 'SIM_HIRO_ONE_SA_SUCCESS',
     'B' : 'SIM_HIRO_ONE_SA_ERROR_CHARAC_Prob',
@@ -509,7 +516,7 @@ filenames = dumper.save_load(
     filenames_save,
     data=None,
     mode=None,
-    datagen=findfilenames,
+    datagen=findfilenames, # function
     param={'root':root},
     dataname="Filenames",
 )

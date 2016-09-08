@@ -8,6 +8,10 @@ Last Edit: 2016/05/05 Thu
 '''
 print "importing...",
 import os
+import ipdb
+from ipdb import set_trace
+ipdb.set_trace()
+
 
 import numpy
 from numpy import pi, cos, sin, linspace, sign, sqrt
@@ -33,19 +37,21 @@ import random
 
 print "ok"
 
-
-
 tasktype_tree = {
-    'data_003_SIM_HIRO_SA_Success': ['2012'],
-    'data_004_SIM_HIRO_SA_ErrorCharac_Prob': ['FC','exp'],
-    'data_008_HIRO_SideApproach_SUCCESS':['2012','x']
+    'REAL_HIRO_ONE_SA_SUCCESS':['2012','x']
 }
+
+#tasktype_tree = {
+#    'SIM_HIRO_ONE_SA_SUCCESS': ['2012'],
+#    'SIM_HIRO_ONE_SA_ERROR_CHARAC_Prob': ['FC','exp'],
+#    'REAL_HIRO_ONE_SA_SUCCESS':['2012','x']
+#}
 
 '''
     'find -maxdepth 3 -name "CartPos*" |grep "\./FC0[^/]*/CartPos*"'
 '''
 
-root = '~/temp/data'
+root = '~/sc/research/AIST/Results/ForceControl'
 root = os.popen('echo '+root).read().strip() # get the absolute path
 
 def findfilenames(root):
@@ -72,7 +78,8 @@ And return the dict-tree structure to store data.
             len_filelist = len(PathList)
             StateFileList = [None]*len_filelist
             for li in xrange(len_filelist):
-                StateFileList[li] = os.popen('cd "'+path+PathList[li]+'" && find . -name "State*.dat"|grep "\./State"').read().strip('./').strip().split()[0]
+                StateFileList[li] = os.popen('cd "'+path+PathList[li]+'" && find . -name "*State.dat"').read().strip('./').strip().split()[0]
+                #StateFileList[li] = os.popen('cd "'+path+PathList[li]+'" && find . -name "*State.dat"|grep "\./State"').read().strip('./').strip().split()[0]
                 filename[i][j] = dict(zip(PathList,map(lambda x:{"CartPos":x[0],"State":x[1]},zip(CartFileList,StateFileList))))
     return filename
 
@@ -82,7 +89,7 @@ And return the dict-tree structure to store data.
 
 filenames_save = "filenames.txt"
 try:
-    ftemp = open(filenames_save,"r")
+    ftemp = open(filenames_save,"r") # data for experiments is first created before main is run
     data = cPickle.load(ftemp)
     ftemp.close()
     print "Filenames loaded"
@@ -94,10 +101,10 @@ except:
     print "Filenames saved"
 
 
-codedir = 'trajcode'
+codedir = 'trajcode' # We will use this to create a directory called trajcode
 alldatafile = "alldata.txt"
 
-
+# Extract data lines from the CartPos file
 def reader(filename):
     lines = file(filename,'r').readlines();
     data = numpy.array(
@@ -361,8 +368,8 @@ def savecodefile(data):
             os.system('mkdir '+codedir+'/'+i+'/'+j)
             for k in data[i][j]:
                 f = open(codedir+'/'+i+'/'+j+'/'+k.replace('/','__'),'w')
-                timestamp = map(float,open('/'.join([root,i,k,data[i][j][k]['State']]),"r").read().strip().split())
-                alldata =reader('/'.join([root,i,k,data[i][j][k]['CartPos']]))
+                timestamp = map(float,open('/'.join([root,i,k[:-1],data[i][j][k]['State']]),"r").read().strip().split())
+                alldata =reader('/'.join([root,i,k[:-1],data[i][j][k]['CartPos']]))
                 r = alldata[:,1:4]
                 correctR(r)
                 timestamp_i = map(lambda x:alldata[:,0].searchsorted(x),timestamp)

@@ -5,6 +5,9 @@ from numpy import pi, cos, sin, linspace, sign, sqrt
 from sklearn import svm
 import time
 import random
+import ipdb
+from ipdb import set_trace
+ipdb.set_trace()
 
 #import load_data
 #reload(load_data)

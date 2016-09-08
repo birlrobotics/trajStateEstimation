@@ -3,7 +3,6 @@
 print "importing..."
 import numpy
 from numpy import pi, cos, sin, linspace, sign, sqrt
-import scipy
 import matplotlib
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib import pyplot as plt
